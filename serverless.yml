@@ -1,0 +1,29 @@
+service: medicin-tracker-api
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: eu-central-1
+  stage: ${opt:stage, 'dev'}
+  memorySize: 512
+  timeout: 15
+  environment:
+    NODE_ENV: production
+    DATABASE_URL: ${env:DATABASE_URL}
+    JWT_SECRET: ${env:JWT_SECRET}
+    JWT_EXPIRES_IN: 7d
+
+functions:
+  api:
+    handler: backend/dist/lambda.handler
+    events:
+      - httpApi: '*'
+    # Оскільки система спроєктована як Модульний моноліт, будь-який модуль
+    # (наприклад, scraper або schedule) можна винести в окрему Lambda-функцію:
+  # scraperWorker:
+  #   handler: backend/dist/modules/scraper/scraper.lambda.handler
+  #   events:
+  #     - httpApi:
+  #         path: /api/medications/preview-image
+  #         method: post

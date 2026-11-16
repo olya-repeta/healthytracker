@@ -1,0 +1,62 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // Для локального MVP використовується sqlite.
+  // Для переходу на PostgreSQL достатньо змінити provider на "postgresql" та оновити DATABASE_URL.
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String         @id @default(uuid())
+  email        String         @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  medications  Medication[]
+  schedules    DoseSchedule[]
+}
+
+model Medication {
+  id            String         @id @default(uuid())
+  userId        String
+  name          String
+  dosage        String         // Наприклад: "1 капсула під час їжі"
+  sourceUrl     String?        // Посилання на препарат в аптеці чи магазині
+  imageUrl      String         // URL зображення (витягнуте og:image або дефолтна іконка)
+  frequencyType String         // "DAILY" | "WEEKLY"
+  timesPerDay   Int            @default(1)
+  timesOfDay    String         // JSON-масив рядків часу, наприклад: '["09:00","20:00"]'
+  daysOfWeek    String         // JSON-масив днів тижня (0=Нд..6=Сб), наприклад: '[1,3,5]' для WEEKLY або '[0,1,2,3,4,5,6]' для DAILY
+  startDate     String         // Формат YYYY-MM-DD
+  durationDays  Int            // Тривалість курсу в днях
+  endDate       String         // Формат YYYY-MM-DD (розраховується автоматично)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schedules     DoseSchedule[]
+
+  @@index([userId])
+}
+
+model DoseSchedule {
+  id            String      @id @default(uuid())
+  medicationId  String
+  userId        String
+  scheduledDate String      // Формат YYYY-MM-DD для швидкої фільтрації за днем без часових зміщень
+  scheduledTime String      // Формат HH:mm (наприклад, "09:00", "14:00", "21:00")
+  status        String      @default("PENDING") // "PENDING" | "TAKEN" | "SKIPPED"
+  actionAt      DateTime?   // Час фактичної відмітки користувачем
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  medication    Medication  @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, scheduledDate])
+  @@index([medicationId])
+}

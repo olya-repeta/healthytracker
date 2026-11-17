@@ -36,6 +36,8 @@ export const AuthPage: React.FC = () => {
     } catch (err: unknown) {
       if (axios.isAxiosError(err) && err.response?.data?.message) {
         setError(err.response.data.message);
+      } else if (err instanceof Error && err.message) {
+        setError(err.message);
       } else {
         setError('Не вдалося виконати запит. Перевірте підключення до сервера.');
       }

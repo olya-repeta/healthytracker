@@ -61,13 +61,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
 
         {/* Інформація про користувача та кнопка виходу */}
         <div className="flex items-center gap-3">
-          {user?.avatarUrl && (
-            <img
-              src={user.avatarUrl}
-              alt={user.name}
-              className="w-8 h-8 rounded-full object-cover border border-sage-200 hidden sm:block"
-            />
-          )}
           <div className="hidden md:flex flex-col items-end">
             <span className="text-sm font-semibold text-slate-800">
               {user?.name}

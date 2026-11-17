@@ -7,6 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: 'auto',
       includeAssets: [
         'pwa-192x192.svg',
         'pwa-512x512.svg',
@@ -39,23 +40,11 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        runtimeCaching: [
-          {
-            urlPattern: ({ url }) => url.pathname.startsWith('/api/schedule'),
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'vitatrack-schedule-cache',
-              networkTimeoutSeconds: 4,
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24 * 7, // 7 днів
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
-        ],
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
+        // Service Worker НЕ перехоплює запити до /api/* та /auth/*
+        navigateFallbackDenylist: [/^\/api/, /^\/auth/],
       },
     }),
   ],

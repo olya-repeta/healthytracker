@@ -4,13 +4,29 @@ import authRoutes from './modules/auth/auth.routes';
 import medicationsRoutes from './modules/medications/medications.routes';
 import scheduleRoutes from './modules/schedule/schedule.routes';
 import { errorHandler } from './middlewares/error.middleware';
+import { env } from './config/env';
 
 export const createApp = () => {
   const app = express();
 
+  const allowedOrigins = env.CORS_ORIGIN.split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
   app.use(
     cors({
-      origin: '*',
+      origin: (origin, callback) => {
+        if (
+          !origin ||
+          allowedOrigins.includes('*') ||
+          allowedOrigins.includes(origin)
+        ) {
+          callback(null, true);
+        } else {
+          callback(null, true);
+        }
+      },
+      credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization'],
     })
@@ -22,6 +38,7 @@ export const createApp = () => {
     res.status(200).json({
       status: 'ok',
       architecture: 'Modular Monolith (Stateless)',
+      clientUrl: env.CLIENT_URL,
       timestamp: new Date().toISOString(),
     });
   });

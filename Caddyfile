@@ -1,0 +1,11 @@
+# Автоматичний HTTPS (Let's Encrypt / ZeroSSL) для публічного домену nip.io
+13.60.250.145.nip.io {
+    encode gzip
+    reverse_proxy frontend:80
+}
+
+# Підтримка прямого HTTP-доступу за IP-адресою та локально без помилки сертифіката
+http://13.60.250.145, http://localhost {
+    encode gzip
+    reverse_proxy frontend:80
+}

@@ -30,7 +30,7 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
         env:
-          DATABASE_URL: "file:./dev.db"
+          DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/vitatrack?schema=public"
 
       - name: TypeScript check
         run: npm run typecheck

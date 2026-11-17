@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { googleLogout } from '@react-oauth/google';
 import { UserDto } from '../types/api';
 import { authApi } from '../api/auth.api';
 import { TOKEN_STORAGE_KEY } from '../api/client';
@@ -8,6 +9,7 @@ interface AuthContextValue {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
+  loginWithGoogle: (idToken: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -52,13 +54,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setUser(res.user);
   };
 
+  const loginWithGoogle = async (idToken: string) => {
+    const res = await authApi.loginWithGoogle(idToken);
+    localStorage.setItem(TOKEN_STORAGE_KEY, res.token);
+    setUser(res.user);
+  };
+
   const logout = () => {
+    try {
+      googleLogout();
+    } catch {
+      // Ігноруємо, якщо Google SDK ще не ініціалізований
+    }
     localStorage.removeItem(TOKEN_STORAGE_KEY);
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{ user, isLoading, login, register, loginWithGoogle, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );

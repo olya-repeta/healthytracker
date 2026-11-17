@@ -16,8 +16,13 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Введіть пароль'),
 });
 
+export const googleLoginSchema = z.object({
+  idToken: z.string().min(1, 'Відсутній Google idToken'),
+});
+
 export type RegisterDto = z.infer<typeof registerSchema>;
 export type LoginDto = z.infer<typeof loginSchema>;
+export type GoogleLoginDto = z.infer<typeof googleLoginSchema>;
 
 export interface AuthResponseDto {
   token: string;
@@ -25,6 +30,7 @@ export interface AuthResponseDto {
     id: string;
     name: string;
     email: string;
+    avatarUrl?: string | null;
     createdAt: Date;
   };
 }

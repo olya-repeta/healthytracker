@@ -1,10 +1,18 @@
 import React, { useState } from 'react';
 import { Pill, Link2, ArrowRight, ShieldCheck, Clock } from 'lucide-react';
+import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 
+const configuredGoogleClientId =
+  import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim() || '';
+const isGoogleOAuthEnabled =
+  Boolean(configuredGoogleClientId) &&
+  configuredGoogleClientId !==
+    'your-google-oauth-client-id.apps.googleusercontent.com';
+
 export const AuthPage: React.FC = () => {
-  const { login, register } = useAuth();
+  const { login, register, loginWithGoogle } = useAuth();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -28,6 +36,29 @@ export const AuthPage: React.FC = () => {
         setError(err.response.data.message);
       } else {
         setError('Не вдалося виконати запит. Перевірте підключення до сервера.');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleGoogleSuccess = async (
+    credentialResponse: CredentialResponse
+  ) => {
+    if (!credentialResponse.credential) {
+      setError('Не отримано токен авторизації від Google.');
+      return;
+    }
+
+    setError(null);
+    setSubmitting(true);
+    try {
+      await loginWithGoogle(credentialResponse.credential);
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else {
+        setError('Не вдалося увійти через Google.');
       }
     } finally {
       setSubmitting(false);
@@ -93,7 +124,7 @@ export const AuthPage: React.FC = () => {
           <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-sage-500/40 rounded-full blur-2xl pointer-events-none" />
         </div>
 
-        {/* Права частина: Форма входу / реєстрації */}
+        {/* Права частина: Форма входу / реєстрації + Google OAuth 2.0 */}
         <div className="lg:col-span-7 p-8 sm:p-12 flex flex-col justify-center">
           <div className="max-w-md mx-auto w-full">
             <div className="inline-flex p-1 rounded-2xl bg-sage-50 border border-sage-100 mb-6 w-full">
@@ -203,6 +234,61 @@ export const AuthPage: React.FC = () => {
                 <ArrowRight className="w-4 h-4" />
               </button>
             </form>
+
+            {/* Розділювач «або» */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-200" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-3 text-slate-400 font-medium">
+                  або
+                </span>
+              </div>
+            </div>
+
+            {/* Кнопка входу через Google OAuth 2.0 */}
+            {isGoogleOAuthEnabled ? (
+              <div className="flex justify-center">
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={() =>
+                    setError('Не вдалося виконати вхід через Google.')
+                  }
+                  shape="pill"
+                  size="large"
+                  width="360"
+                  text="continue_with"
+                />
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled
+                title="Вкажіть VITE_GOOGLE_CLIENT_ID у файлі .env для активації Google OAuth 2.0"
+                className="w-full py-3 px-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 text-sm font-medium flex items-center justify-center gap-2.5 cursor-not-allowed"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.14C3.26 21.3 7.31 24 12 24z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.28 14.24c-.24-.72-.38-1.49-.38-2.24s.14-1.52.38-2.24V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.99-3.14z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96z"
+                  />
+                </svg>
+                <span>Увійти через Google (вкажіть VITE_GOOGLE_CLIENT_ID)</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

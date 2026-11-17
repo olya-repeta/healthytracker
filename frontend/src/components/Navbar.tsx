@@ -59,8 +59,15 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
           </button>
         </nav>
 
-        {/* Інформація про користувача та вихід */}
+        {/* Інформація про користувача та кнопка виходу */}
         <div className="flex items-center gap-3">
+          {user?.avatarUrl && (
+            <img
+              src={user.avatarUrl}
+              alt={user.name}
+              className="w-8 h-8 rounded-full object-cover border border-sage-200 hidden sm:block"
+            />
+          )}
           <div className="hidden md:flex flex-col items-end">
             <span className="text-sm font-semibold text-slate-800">
               {user?.name}
@@ -71,9 +78,10 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
             type="button"
             onClick={logout}
             title="Вийти з акаунту"
-            className="p-2.5 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100 transition"
           >
             <LogOut className="w-4 h-4" />
+            <span className="hidden sm:inline">Вийти</span>
           </button>
         </div>
       </div>

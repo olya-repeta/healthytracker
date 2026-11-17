@@ -1,5 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
-import { loginSchema, registerSchema } from './auth.dto';
+import {
+  googleLoginSchema,
+  loginSchema,
+  registerSchema,
+} from './auth.dto';
 import { authService } from './auth.service';
 
 export class AuthController {
@@ -17,6 +21,20 @@ export class AuthController {
     try {
       const dto = loginSchema.parse(req.body);
       const result = await authService.login(dto);
+      res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async loginWithGoogle(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const { idToken } = googleLoginSchema.parse(req.body);
+      const result = await authService.loginWithGoogle(idToken);
       res.status(200).json(result);
     } catch (error) {
       next(error);

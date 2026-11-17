@@ -10,5 +10,7 @@ export const env = {
     'postgresql://postgres:postgres@localhost:5432/vitatrack?schema=public',
   JWT_SECRET: process.env.JWT_SECRET || 'medtracker-super-secret-jwt-key-2026',
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
-  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
+  GOOGLE_CLIENT_ID: (process.env.GOOGLE_CLIENT_ID || '')
+    .replace(/^["']|["']$/g, '')
+    .trim(),
 };

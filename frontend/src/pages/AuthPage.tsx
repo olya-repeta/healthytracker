@@ -4,8 +4,10 @@ import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 
-const configuredGoogleClientId =
-  import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim() || '';
+const rawGoogleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+const configuredGoogleClientId = rawGoogleClientId
+  .replace(/^["']|["']$/g, '')
+  .trim();
 const isGoogleOAuthEnabled =
   Boolean(configuredGoogleClientId) &&
   configuredGoogleClientId !==

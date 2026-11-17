@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Check,
   X,
@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   AlertCircle,
   WifiOff,
+  RefreshCw,
 } from 'lucide-react';
 import { scheduleApi } from '../api/schedule.api';
 import {
@@ -28,6 +29,7 @@ interface DashboardTabProps {
 
 const OFFLINE_TODAY_DOSES_KEY = 'vitatrack_offline_today_doses';
 const OFFLINE_DASHBOARD_META_KEY = 'vitatrack_offline_dashboard_meta';
+const OFFLINE_SYNC_QUEUE_KEY = 'vitatrack_offline_sync_queue';
 
 interface OfflineTodayCache {
   savedAt: string;
@@ -39,6 +41,12 @@ interface OfflineDashboardMetaCache {
   savedAt: string;
   daysMap: Record<string, DaySummaryDto>;
   stats: AdherenceStatsResponseDto | null;
+}
+
+export interface OfflineSyncQueueItem {
+  doseId: string;
+  status: DoseStatus;
+  timestamp: string;
 }
 
 const UKRAINIAN_MONTHS = [
@@ -75,12 +83,92 @@ function formatReadableDate(dateStr: string): string {
   });
 }
 
+function readSyncQueue(): OfflineSyncQueueItem[] {
+  try {
+    const raw = localStorage.getItem(OFFLINE_SYNC_QUEUE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as OfflineSyncQueueItem[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeSyncQueue(queue: OfflineSyncQueueItem[]): void {
+  try {
+    if (queue.length === 0) {
+      localStorage.removeItem(OFFLINE_SYNC_QUEUE_KEY);
+    } else {
+      localStorage.setItem(OFFLINE_SYNC_QUEUE_KEY, JSON.stringify(queue));
+    }
+  } catch {
+    // Ігноруємо помилки localStorage
+  }
+}
+
+function enqueueOfflineDoseAction(
+  doseId: string,
+  status: DoseStatus
+): OfflineSyncQueueItem[] {
+  const current = readSyncQueue();
+  const existingIdx = current.findIndex((item) => item.doseId === doseId);
+  const entry: OfflineSyncQueueItem = {
+    doseId,
+    status,
+    timestamp: new Date().toISOString(),
+  };
+
+  let nextQueue: OfflineSyncQueueItem[];
+  if (existingIdx >= 0) {
+    nextQueue = [...current];
+    nextQueue[existingIdx] = entry;
+  } else {
+    nextQueue = [...current, entry];
+  }
+
+  writeSyncQueue(nextQueue);
+  return nextQueue;
+}
+
+function overlayQueueOnDoses(
+  doses: DoseItemDto[],
+  queue: OfflineSyncQueueItem[]
+): DoseItemDto[] {
+  if (queue.length === 0) return doses;
+  const map = new Map(queue.map((q) => [q.doseId, q.status]));
+  return doses.map((d) => {
+    const queuedStatus = map.get(d.id);
+    return queuedStatus ? { ...d, status: queuedStatus } : d;
+  });
+}
+
+function recalculateDaySummary(
+  daySummary: DaySummaryDto,
+  updatedDoses: DoseItemDto[]
+): DaySummaryDto {
+  const total = updatedDoses.length;
+  const taken = updatedDoses.filter((d) => d.status === 'TAKEN').length;
+  const skipped = updatedDoses.filter((d) => d.status === 'SKIPPED').length;
+  const pending = updatedDoses.filter((d) => d.status === 'PENDING').length;
+  return {
+    ...daySummary,
+    total,
+    taken,
+    skipped,
+    pending,
+    allCompleted: total > 0 && taken === total,
+    hasSkipped: skipped > 0,
+    doses: updatedDoses,
+  };
+}
+
 function readOfflineTodayCache(): DoseItemDto[] {
   try {
     const raw = localStorage.getItem(OFFLINE_TODAY_DOSES_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as OfflineTodayCache;
-    return Array.isArray(parsed.doses) ? parsed.doses : [];
+    const base = Array.isArray(parsed.doses) ? parsed.doses : [];
+    return overlayQueueOnDoses(base, readSyncQueue());
   } catch {
     return [];
   }
@@ -90,7 +178,17 @@ function readOfflineMetaCache(): OfflineDashboardMetaCache | null {
   try {
     const raw = localStorage.getItem(OFFLINE_DASHBOARD_META_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as OfflineDashboardMetaCache;
+    const parsed = JSON.parse(raw) as OfflineDashboardMetaCache;
+    const queue = readSyncQueue();
+    if (queue.length > 0 && parsed.daysMap) {
+      const updatedDaysMap: Record<string, DaySummaryDto> = {};
+      for (const [dateKey, dayGroup] of Object.entries(parsed.daysMap)) {
+        const overlaid = overlayQueueOnDoses(dayGroup.doses, queue);
+        updatedDaysMap[dateKey] = recalculateDaySummary(dayGroup, overlaid);
+      }
+      parsed.daysMap = updatedDaysMap;
+    }
+    return parsed;
   } catch {
     return null;
   }
@@ -104,6 +202,12 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   const [isOffline, setIsOffline] = useState<boolean>(
     typeof navigator !== 'undefined' ? !navigator.onLine : false
   );
+  const [syncQueueCount, setSyncQueueCount] = useState<number>(() => {
+    return readSyncQueue().length;
+  });
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const isSyncingRef = useRef<boolean>(false);
+
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [calendarView, setCalendarView] = useState<'month' | 'week'>('month');
   const [currentMonthDate, setCurrentMonthDate] = useState<Date>(() => {
@@ -127,20 +231,6 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   });
   const [loading, setLoading] = useState<boolean>(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-
-  // Відстеження подій online / offline у браузері
-  useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
 
   // Обчислюємо діапазон дат для завантаження календаря та бічної панелі
   const { rangeFrom, rangeTo, calendarCells } = useMemo(() => {
@@ -208,6 +298,45 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
     }
   }, [selectedDate, todayStr]);
 
+  /**
+   * Надсилає накопичені в офлайні зміни статусів доз на сервер по черзі
+   */
+  const flushOfflineSyncQueue = useCallback(async (): Promise<boolean> => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return false;
+    }
+    const queue = readSyncQueue();
+    if (queue.length === 0 || isSyncingRef.current) {
+      return false;
+    }
+
+    isSyncingRef.current = true;
+    setIsSyncing(true);
+
+    const remaining: OfflineSyncQueueItem[] = [...queue];
+    try {
+      for (const item of queue) {
+        await scheduleApi.updateStatus(item.doseId, item.status);
+        remaining.shift();
+        writeSyncQueue(remaining);
+        setSyncQueueCount(remaining.length);
+      }
+      return true;
+    } catch (err) {
+      console.warn(
+        'Не вдалося синхронізувати частину офлайн-черги (повторимо при відновленні зв’язку):',
+        err
+      );
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setIsOffline(true);
+      }
+      return false;
+    } finally {
+      isSyncingRef.current = false;
+      setIsSyncing(false);
+    }
+  }, []);
+
   const fetchDashboardData = useCallback(async () => {
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       setIsOffline(true);
@@ -217,6 +346,11 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
     }
 
     try {
+      // Якщо є несинхронізовані дії з офлайну — спочатку відправляємо їх на бекенд
+      if (readSyncQueue().length > 0) {
+        await flushOfflineSyncQueue();
+      }
+
       const [rangeRes, todayRes, selectedRes, statsRes] = await Promise.all([
         scheduleApi.getByRange(rangeFrom, rangeTo),
         scheduleApi.getByDate(todayStr),
@@ -227,9 +361,24 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
       ]);
 
       setIsOffline(false);
-      setDaysMap(rangeRes.days);
-      setTodayDoses(todayRes.doses);
-      setSelectedDateDoses(selectedRes ? selectedRes.doses : todayRes.doses);
+      const pendingQueue = readSyncQueue();
+      setSyncQueueCount(pendingQueue.length);
+
+      const finalTodayDoses = overlayQueueOnDoses(todayRes.doses, pendingQueue);
+      const finalSelectedDoses = overlayQueueOnDoses(
+        selectedRes ? selectedRes.doses : todayRes.doses,
+        pendingQueue
+      );
+
+      const finalDaysMap: Record<string, DaySummaryDto> = {};
+      for (const [dateKey, daySummary] of Object.entries(rangeRes.days)) {
+        const overlaid = overlayQueueOnDoses(daySummary.doses, pendingQueue);
+        finalDaysMap[dateKey] = recalculateDaySummary(daySummary, overlaid);
+      }
+
+      setDaysMap(finalDaysMap);
+      setTodayDoses(finalTodayDoses);
+      setSelectedDateDoses(finalSelectedDoses);
       setStats(statsRes);
 
       // Зберігаємо актуальний розклад на сьогодні та мета-дані у localStorage для офлайн-режиму
@@ -237,7 +386,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         const todayCachePayload: OfflineTodayCache = {
           savedAt: new Date().toISOString(),
           date: todayStr,
-          doses: todayRes.doses,
+          doses: finalTodayDoses,
         };
         localStorage.setItem(
           OFFLINE_TODAY_DOSES_KEY,
@@ -246,7 +395,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
 
         const metaCachePayload: OfflineDashboardMetaCache = {
           savedAt: new Date().toISOString(),
-          daysMap: rangeRes.days,
+          daysMap: finalDaysMap,
           stats: statsRes,
         };
         localStorage.setItem(
@@ -261,48 +410,124 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         'Мережева помилка при зверненні до API — використовуємо збережений офлайн-кеш:',
         err
       );
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        setIsOffline(true);
-      }
+      setIsOffline(true);
       loadFromOfflineCache();
     } finally {
       setLoading(false);
     }
-  }, [rangeFrom, rangeTo, todayStr, selectedDate, loadFromOfflineCache]);
+  }, [
+    rangeFrom,
+    rangeTo,
+    todayStr,
+    selectedDate,
+    loadFromOfflineCache,
+    flushOfflineSyncQueue,
+  ]);
 
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
+
+  // Відстеження подій online / offline у браузері та авто-синхронізація при появі мережі
+  useEffect(() => {
+    const handleOnline = async () => {
+      setIsOffline(false);
+      await flushOfflineSyncQueue();
+      await fetchDashboardData();
+    };
+
+    const handleOffline = () => {
+      setIsOffline(true);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [flushOfflineSyncQueue, fetchDashboardData]);
+
+  /**
+   * Миттєве оптимістичне оновлення локального стану та кешу (Optimistic UI)
+   */
+  const applyOptimisticStatusUpdate = (
+    scheduleId: string,
+    newStatus: DoseStatus
+  ) => {
+    const updatedToday = todayDoses.map((d) =>
+      d.id === scheduleId ? { ...d, status: newStatus } : d
+    );
+    setTodayDoses(updatedToday);
+
+    setSelectedDateDoses((prev) =>
+      prev.map((d) => (d.id === scheduleId ? { ...d, status: newStatus } : d))
+    );
+
+    const updatedDaysMap: Record<string, DaySummaryDto> = {};
+    for (const [dateKey, group] of Object.entries(daysMap)) {
+      const hasTarget = group.doses.some((d) => d.id === scheduleId);
+      if (hasTarget) {
+        const nextDoses = group.doses.map((d) =>
+          d.id === scheduleId ? { ...d, status: newStatus } : d
+        );
+        updatedDaysMap[dateKey] = recalculateDaySummary(group, nextDoses);
+      } else {
+        updatedDaysMap[dateKey] = group;
+      }
+    }
+    setDaysMap(updatedDaysMap);
+
+    try {
+      localStorage.setItem(
+        OFFLINE_TODAY_DOSES_KEY,
+        JSON.stringify({
+          savedAt: new Date().toISOString(),
+          date: todayStr,
+          doses: updatedToday,
+        } satisfies OfflineTodayCache)
+      );
+
+      localStorage.setItem(
+        OFFLINE_DASHBOARD_META_KEY,
+        JSON.stringify({
+          savedAt: new Date().toISOString(),
+          daysMap: updatedDaysMap,
+          stats,
+        } satisfies OfflineDashboardMetaCache)
+      );
+    } catch {
+      // ignore
+    }
+  };
 
   const handleStatusChange = async (
     scheduleId: string,
     newStatus: DoseStatus
   ) => {
     setUpdatingId(scheduleId);
+
+    // 1. Одразу оновлюємо інтерфейс та локальний кеш (Optimistic UI)
+    applyOptimisticStatusUpdate(scheduleId, newStatus);
+
+    // 2. Якщо браузер у режимі офлайн — додаємо в чергу синхронізації без очікування таймауту мережі
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setIsOffline(true);
+      const updatedQueue = enqueueOfflineDoseAction(scheduleId, newStatus);
+      setSyncQueueCount(updatedQueue.length);
+      setUpdatingId(null);
+      return;
+    }
+
     try {
       await scheduleApi.updateStatus(scheduleId, newStatus);
       await fetchDashboardData();
     } catch {
-      // Якщо користувач офлайн, оновлюємо локальний кеш для плавної демонстрації
-      const updatedToday = todayDoses.map((d) =>
-        d.id === scheduleId ? { ...d, status: newStatus } : d
-      );
-      setTodayDoses(updatedToday);
-      setSelectedDateDoses((prev) =>
-        prev.map((d) => (d.id === scheduleId ? { ...d, status: newStatus } : d))
-      );
-      try {
-        localStorage.setItem(
-          OFFLINE_TODAY_DOSES_KEY,
-          JSON.stringify({
-            savedAt: new Date().toISOString(),
-            date: todayStr,
-            doses: updatedToday,
-          } satisfies OfflineTodayCache)
-        );
-      } catch {
-        // ignore
-      }
+      // Якщо під час запиту виникла мережева помилка — зберігаємо дію в чергу синхронізації
+      setIsOffline(true);
+      const updatedQueue = enqueueOfflineDoseAction(scheduleId, newStatus);
+      setSyncQueueCount(updatedQueue.length);
     } finally {
       setUpdatingId(null);
     }
@@ -325,11 +550,23 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Ненав'язливий індикатор офлайн-режиму (показується лише коли немає інтернету) */}
-      {isOffline && (
+      {/* Індикатор синхронізації з сервером при відновленні зв'язку */}
+      {isSyncing && (
+        <div className="bg-sage-50 border border-sage-200 text-sage-800 px-4 py-3 rounded-2xl flex items-center gap-2.5 text-xs sm:text-sm font-medium shadow-xs">
+          <RefreshCw className="w-4 h-4 text-sage-600 animate-spin shrink-0" />
+          <span>Синхронізація змін із сервером...</span>
+        </div>
+      )}
+
+      {/* Ненав'язливий індикатор офлайн-режиму з лічильником несинхронізованих змін */}
+      {isOffline && !isSyncing && (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-2xl flex items-center gap-2.5 text-xs sm:text-sm font-medium shadow-xs">
           <WifiOff className="w-4 h-4 text-amber-600 shrink-0" />
-          <span>Офлайн-режим: показано збережений розклад прийомів</span>
+          <span>
+            {syncQueueCount > 0
+              ? `Офлайн-режим: показано збережений розклад (несинхронізованих змін: ${syncQueueCount})`
+              : 'Офлайн-режим: показано збережений розклад прийомів'}
+          </span>
         </div>
       )}
 

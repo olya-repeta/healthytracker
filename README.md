@@ -38,5 +38,5 @@ npm run dev
 ```bash
 docker compose up --build
 ```
-- Frontend: `http://localhost:5173`
-- Backend API: `http://localhost:4000/api`
+- Frontend: `http://localhost` (порт 80)
+- Backend API: `http://localhost:4000/api` (або через проксі `http://localhost/api`)

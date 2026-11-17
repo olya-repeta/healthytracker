@@ -4,6 +4,8 @@ build/
 .env
 *.db
 *.db-journal
+*.sqlite
+*.sqlite-journal
 .DS_Store
 coverage/
 .serverless/

@@ -6,7 +6,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar as CalendarIcon,
-  Sparkles,
   TrendingUp,
   Plus,
   ExternalLink,
@@ -14,7 +13,6 @@ import {
   CheckCircle2,
   AlertCircle,
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
 import { scheduleApi } from '../api/schedule.api';
 import {
   AdherenceStatsResponseDto,
@@ -64,7 +62,6 @@ function formatReadableDate(dateStr: string): string {
 export const DashboardTab: React.FC<DashboardTabProps> = ({
   onNavigateToAdd,
 }) => {
-  const { user } = useAuth();
   const todayStr = useMemo(() => toDateStr(new Date()), []);
 
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
@@ -189,28 +186,10 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* 1. Привітання користувача та статистика дотримання курсу за тиждень/місяць */}
-      <section className="bg-white rounded-3xl p-6 sm:p-8 border border-sage-100 shadow-sm flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-        <div className="space-y-1.5">
-          <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-sage-700 bg-sage-50 px-3 py-1 rounded-full border border-sage-200">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Щоденний контроль здоров’я</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
-            Привіт, {user?.name || 'друже'}! 👋
-          </h1>
-          <p className="text-sm text-slate-500">
-            Сьогодні{' '}
-            <span className="font-medium text-slate-700">
-              {formatReadableDate(todayStr)}
-            </span>
-            . Відмічай прийняті препарати вчасно та слідкуй за прогресом курсу.
-          </p>
-        </div>
-
-        {/* Картки статистики за тиждень та місяць */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 shrink-0">
-          <div className="bg-sage-50/80 border border-sage-100 rounded-2xl p-4">
+      {/* 1. Статистика дотримання курсу за тиждень, місяць та сьогодні */}
+      <section className="bg-white rounded-3xl p-5 sm:p-6 border border-sage-100 shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+          <div className="bg-sage-50/80 border border-sage-100 rounded-2xl p-5 flex flex-col justify-between">
             <div className="flex items-center gap-1.5 text-xs font-medium text-sage-700 mb-1">
               <TrendingUp className="w-3.5 h-3.5" />
               <span>За 7 днів</span>
@@ -223,7 +202,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             </p>
           </div>
 
-          <div className="bg-sage-50/80 border border-sage-100 rounded-2xl p-4">
+          <div className="bg-sage-50/80 border border-sage-100 rounded-2xl p-5 flex flex-col justify-between">
             <div className="flex items-center gap-1.5 text-xs font-medium text-sage-700 mb-1">
               <CalendarIcon className="w-3.5 h-3.5" />
               <span>За 30 днів</span>
@@ -236,7 +215,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
             </p>
           </div>
 
-          <div className="col-span-2 sm:col-span-1 bg-sage-600 text-white rounded-2xl p-4 flex flex-col justify-between">
+          <div className="bg-sage-600 text-white rounded-2xl p-5 flex flex-col justify-between">
             <span className="text-xs text-sage-100 font-medium">
               Сьогодні за графіком
             </span>

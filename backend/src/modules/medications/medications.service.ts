@@ -24,9 +24,10 @@ export class MedicationsService {
       );
     }
 
-    // Якщо користувач вказав посилання, але прев'ю ще не було передане — парсимо автоматично
+    // Якщо користувач вказав посилання, але реальне фото ще не передане (або стоїть SVG-заглушка) — парсимо автоматично
     let finalImageUrl = dto.imageUrl?.trim() || '';
-    if (!finalImageUrl && dto.sourceUrl?.trim()) {
+    const isSvgFallback = finalImageUrl.startsWith('data:image/svg+xml');
+    if ((!finalImageUrl || isSvgFallback) && dto.sourceUrl?.trim()) {
       const preview = await scraperService.extractPreviewFromUrl(dto.sourceUrl);
       finalImageUrl = preview.imageUrl;
     }

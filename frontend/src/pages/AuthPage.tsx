@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pill, Sparkles, ArrowRight, ShieldCheck, Clock } from 'lucide-react';
+import { Pill, Link2, ArrowRight, ShieldCheck, Clock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 
@@ -69,7 +69,7 @@ export const AuthPage: React.FC = () => {
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <Sparkles className="w-5 h-5 text-sage-200 shrink-0 mt-0.5" />
+              <Link2 className="w-5 h-5 text-sage-200 shrink-0 mt-0.5" />
               <div>
                 <p className="font-medium text-white">
                   Авто-прев’ю препарату за посиланням

@@ -54,6 +54,8 @@ export interface PreviewImageResponseDto {
   imageUrl: string;
   title?: string;
   isFallback: boolean;
+  source?: string;
+  reason?: string;
 }
 
 export interface DoseItemDto {

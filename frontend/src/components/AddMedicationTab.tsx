@@ -3,7 +3,7 @@ import {
   Link2,
   Clock,
   Calendar,
-  Sparkles,
+  Plus,
   CheckCircle2,
   Trash2,
   ExternalLink,
@@ -54,10 +54,14 @@ export const AddMedicationTab: React.FC<AddMedicationTabProps> = ({
   const [name, setName] = useState('');
   const [dosage, setDosage] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
+  const [customImageUrl, setCustomImageUrl] = useState('');
   const [previewImageUrl, setPreviewImageUrl] = useState<string>(
     DEFAULT_FALLBACK_PREVIEW
   );
   const [isFallbackPreview, setIsFallbackPreview] = useState<boolean>(true);
+  const [previewReason, setPreviewReason] = useState<string | undefined>(
+    undefined
+  );
   const [previewLoading, setPreviewLoading] = useState<boolean>(false);
 
   const [frequencyType, setFrequencyType] = useState<FrequencyType>('DAILY');
@@ -88,12 +92,12 @@ export const AddMedicationTab: React.FC<AddMedicationTabProps> = ({
     loadMedications();
   }, []);
 
-  // Автоматичне підтягування зображення (og:image) при вставці або зміні посилання
-  useEffect(() => {
-    const trimmed = sourceUrl.trim();
+  const triggerImagePreview = async (targetUrl: string) => {
+    const trimmed = targetUrl.trim();
     if (!trimmed) {
       setPreviewImageUrl(DEFAULT_FALLBACK_PREVIEW);
       setIsFallbackPreview(true);
+      setPreviewReason(undefined);
       return;
     }
 
@@ -109,18 +113,33 @@ export const AddMedicationTab: React.FC<AddMedicationTabProps> = ({
       return;
     }
 
-    const timer = setTimeout(async () => {
-      setPreviewLoading(true);
-      try {
-        const res = await medicationsApi.previewImage(trimmed);
-        setPreviewImageUrl(res.imageUrl);
-        setIsFallbackPreview(res.isFallback);
-      } catch {
-        setPreviewImageUrl(DEFAULT_FALLBACK_PREVIEW);
-        setIsFallbackPreview(true);
-      } finally {
-        setPreviewLoading(false);
-      }
+    setPreviewLoading(true);
+    try {
+      const res = await medicationsApi.previewImage(trimmed);
+      setPreviewImageUrl(res.imageUrl);
+      setIsFallbackPreview(res.isFallback);
+      setPreviewReason(res.reason);
+    } catch {
+      setPreviewImageUrl(DEFAULT_FALLBACK_PREVIEW);
+      setIsFallbackPreview(true);
+      setPreviewReason('fetch_error');
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  // Автоматичне підтягування зображення (og:image / JSON-LD) при вставці або зміні посилання
+  useEffect(() => {
+    const trimmed = sourceUrl.trim();
+    if (!trimmed) {
+      setPreviewImageUrl(DEFAULT_FALLBACK_PREVIEW);
+      setIsFallbackPreview(true);
+      setPreviewReason(undefined);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      triggerImagePreview(trimmed);
     }, 450);
 
     return () => clearTimeout(timer);
@@ -166,11 +185,18 @@ export const AddMedicationTab: React.FC<AddMedicationTabProps> = ({
 
     setSubmitting(true);
     try {
+      const manualImg = customImageUrl.trim();
+      const resolvedImageToSend = manualImg
+        ? manualImg
+        : !isFallbackPreview
+        ? previewImageUrl
+        : null;
+
       const res = await medicationsApi.create({
         name,
         dosage,
         sourceUrl: sourceUrl.trim() || null,
-        imageUrl: previewImageUrl,
+        imageUrl: resolvedImageToSend,
         frequencyType,
         timesPerDay: timesOfDay.length,
         timesOfDay,
@@ -186,8 +212,10 @@ export const AddMedicationTab: React.FC<AddMedicationTabProps> = ({
       setName('');
       setDosage('');
       setSourceUrl('');
+      setCustomImageUrl('');
       setPreviewImageUrl(DEFAULT_FALLBACK_PREVIEW);
       setIsFallbackPreview(true);
+      setPreviewReason(undefined);
       await loadMedications();
 
       setTimeout(() => {
@@ -218,10 +246,6 @@ export const AddMedicationTab: React.FC<AddMedicationTabProps> = ({
       {/* Основна форма створення нового препарату/вітаміну */}
       <div className="lg:col-span-8 bg-white rounded-3xl p-6 sm:p-8 border border-sage-100 shadow-sm">
         <div className="mb-6">
-          <div className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-sage-700 bg-sage-50 px-3 py-1 rounded-full border border-sage-200 mb-2">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Автоматична генерація курсу</span>
-          </div>
           <h1 className="text-2xl font-bold text-slate-900">
             Додати новий препарат або вітамін
           </h1>
@@ -276,16 +300,18 @@ export const AddMedicationTab: React.FC<AddMedicationTabProps> = ({
             </div>
           </div>
 
-          {/* 2. Посилання на препарат (URL) + Автоматичне прев'ю зображення */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-sage-50/60 border border-sage-100">
+          {/* 2. Посилання на препарат (URL) + Автоматичне прев'ю зображення + Ручний URL картинки */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-sage-50/60 border border-sage-100 space-y-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <div className="relative w-24 h-24 rounded-2xl bg-white border border-sage-200 overflow-hidden shrink-0 flex items-center justify-center shadow-sm">
                 <img
-                  src={previewImageUrl}
+                  src={customImageUrl.trim() || previewImageUrl}
                   alt="Прев'ю препарату"
                   onError={() => {
-                    setPreviewImageUrl(DEFAULT_FALLBACK_PREVIEW);
-                    setIsFallbackPreview(true);
+                    if (!customImageUrl.trim()) {
+                      setPreviewImageUrl(DEFAULT_FALLBACK_PREVIEW);
+                      setIsFallbackPreview(true);
+                    }
                   }}
                   className="w-full h-full object-cover"
                 />
@@ -296,29 +322,59 @@ export const AddMedicationTab: React.FC<AddMedicationTabProps> = ({
                 )}
               </div>
 
-              <div className="flex-1 w-full">
-                <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
-                  <Link2 className="w-3.5 h-3.5 text-sage-600" />
-                  <span>Посилання на препарат в аптеці чи магазині (URL)</span>
-                </label>
-                <input
-                  type="url"
-                  value={sourceUrl}
-                  onChange={(e) => setSourceUrl(e.target.value)}
-                  placeholder="https://..."
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-sage-500/30 focus:border-sage-500 transition text-sm"
-                />
-                <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
-                  <ImageIcon className="w-3.5 h-3.5 text-sage-600 shrink-0" />
-                  <span>
-                    {previewLoading
-                      ? 'Парсимо og:image зі сторінки товару...'
-                      : !sourceUrl.trim()
-                      ? 'Вставте посилання на ліки/вітаміни — фото підтягнеться автоматично'
-                      : isFallbackPreview
-                      ? 'Картинку за посиланням не знайдено — встановлено охайну іконку вітамінів'
-                      : 'Фото препарату успішно підтягнуто зі сторінки!'}
-                  </span>
+              <div className="flex-1 w-full space-y-3">
+                <div>
+                  <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
+                    <Link2 className="w-3.5 h-3.5 text-sage-600" />
+                    <span>Посилання на препарат в аптеці чи магазині (URL)</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      value={sourceUrl}
+                      onChange={(e) => setSourceUrl(e.target.value)}
+                      placeholder="https://apteka911.ua/..."
+                      className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-sage-500/30 focus:border-sage-500 transition text-sm"
+                    />
+                    <button
+                      type="button"
+                      disabled={!sourceUrl.trim() || previewLoading}
+                      onClick={() => triggerImagePreview(sourceUrl)}
+                      className="px-3.5 py-2.5 rounded-xl bg-white hover:bg-sage-100 text-sage-800 border border-sage-200 text-xs font-semibold transition shrink-0 disabled:opacity-50"
+                    >
+                      Підтягнути фото
+                    </button>
+                  </div>
+                  <div className="mt-1.5 flex items-center gap-2 text-xs text-slate-500">
+                    <ImageIcon className="w-3.5 h-3.5 text-sage-600 shrink-0" />
+                    <span>
+                      {customImageUrl.trim()
+                        ? 'Використовується вказане вручну пряме посилання на фото препарату'
+                        : previewLoading
+                        ? 'Парсимо фото зі сторінки товару...'
+                        : !sourceUrl.trim()
+                        ? 'Вставте посилання на ліки/вітаміни — фото підтягнеться автоматично'
+                        : isFallbackPreview
+                        ? previewReason?.startsWith('http_403')
+                          ? 'Сайт аптеки захищений від авто-парсингу (Cloudflare) — за бажанням вставте прямий URL картинки нижче'
+                          : 'Картинку за посиланням не знайдено — встановлено дефолтну іконку або вкажіть прямий URL фото нижче'
+                        : 'Фото препарату успішно підтягнуто зі сторінки!'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Опціональне поле для прямого посилання на картинку (якщо сайт захищений Cloudflare) */}
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">
+                    Пряме посилання на картинку (опціонально, якщо сайт аптеки блокує авто-парсинг):
+                  </label>
+                  <input
+                    type="url"
+                    value={customImageUrl}
+                    onChange={(e) => setCustomImageUrl(e.target.value)}
+                    placeholder="https://.../product-photo.jpg"
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white/90 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sage-500/30 focus:border-sage-500 transition text-xs"
+                  />
                 </div>
               </div>
             </div>
@@ -505,7 +561,7 @@ export const AddMedicationTab: React.FC<AddMedicationTabProps> = ({
             disabled={submitting}
             className="w-full py-4 px-6 rounded-2xl bg-sage-600 hover:bg-sage-700 active:bg-sage-800 text-white font-semibold text-sm shadow-lg shadow-sage-600/20 transition flex items-center justify-center gap-2 disabled:opacity-60"
           >
-            <Sparkles className="w-4 h-4" />
+            <Plus className="w-4 h-4" />
             <span>
               {submitting
                 ? 'Створюємо розклад...'

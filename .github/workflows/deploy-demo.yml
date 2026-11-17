@@ -1,0 +1,28 @@
+name: Auto Deploy to AWS (demo_main)
+
+on:
+  push:
+    branches:
+      - demo_main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy demo_main via SSH
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to AWS EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.AWS_HOST }}
+          username: ${{ secrets.AWS_USER }}
+          key: ${{ secrets.AWS_SSH_KEY }}
+          port: 22
+          script: |
+            set -e
+            cd ~/vitatrack
+            git fetch origin
+            git checkout demo_main
+            git reset --hard origin/demo_main
+            docker compose up --build -d
+            docker image prune -f

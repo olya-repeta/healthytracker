@@ -1,14 +1,14 @@
-name: Auto Deploy to AWS (demo_main)
+name: Auto Deploy to AWS (main)
 
 on:
   push:
     branches:
-      - demo_main
+      - main
   workflow_dispatch:
 
 jobs:
   deploy:
-    name: Deploy demo_main via SSH
+    name: Deploy main via SSH
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to AWS EC2 via SSH
@@ -22,7 +22,7 @@ jobs:
             set -e
             cd ~/vitatrack
             git fetch origin
-            git checkout demo_main
-            git reset --hard origin/demo_main
+            git checkout main
+            git reset --hard origin/main
             docker compose up --build -d
             docker image prune -f

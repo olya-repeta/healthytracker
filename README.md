@@ -13,6 +13,9 @@
 - **`/frontend`** — React 18 + TypeScript + Vite + Tailwind CSS + Axios.
   - Типізований API-клієнт у `frontend/src/api/` та спільні DTO у `frontend/src/types/api.ts`.
   - 2 основні вкладки: **«Головна / Мій трекер»** та **«Додати препарат»**.
+- **`/infra`** — конфігурація Docker Compose (`docker-compose.yml`), multi-stage `Dockerfile`, serverless-конфігурація (`serverless.yml`) та детальний опис взаємодії компонентів і бази даних.
+
+Детальну ER-діаграму бази даних PostgreSQL, опис усіх таблиць (`User`, `Medication`, `DoseSchedule`) та API-контрактів дивіться у файлі [`infra/ARCHITECTURE.md`](./infra/ARCHITECTURE.md).
 
 ## Швидкий локальний запуск
 
@@ -36,7 +39,16 @@ npm run dev
 
 ## Запуск через Docker Compose
 ```bash
-docker compose up --build
+docker compose -f infra/docker-compose.yml up --build
 ```
 - Frontend: `http://localhost:5173`
 - Backend API: `http://localhost:4000/api`
+
+## Деплой (Deployment)
+
+Проєкт підтримує два варіанти продакшн-розгортання:
+- **Контейнерний деплой (Docker / PaaS):** збірка відбувається через multi-stage `Dockerfile` (`backend-production` на порту `4000` із автоматичним застосуванням схеми `npx prisma db push` та `frontend-production` на базі Nginx, що роздає SPA та проксує `/api/*` на бекенд). Для роботи потрібні змінні середовища `DATABASE_URL`, `JWT_SECRET` та `VITE_API_URL` (див. `.env.example`).
+- **Serverless-деплой (AWS Lambda):** розгортання бекенду через Serverless Framework у регіон `eu-central-1`:
+  ```bash
+  npx serverless deploy --config infra/serverless.yml
+  ```

@@ -12,6 +12,7 @@ import {
   History,
   CheckCircle2,
   AlertCircle,
+  WifiOff,
 } from 'lucide-react';
 import { scheduleApi } from '../api/schedule.api';
 import {
@@ -23,6 +24,21 @@ import {
 
 interface DashboardTabProps {
   onNavigateToAdd: () => void;
+}
+
+const OFFLINE_TODAY_DOSES_KEY = 'vitatrack_offline_today_doses';
+const OFFLINE_DASHBOARD_META_KEY = 'vitatrack_offline_dashboard_meta';
+
+interface OfflineTodayCache {
+  savedAt: string;
+  date: string;
+  doses: DoseItemDto[];
+}
+
+interface OfflineDashboardMetaCache {
+  savedAt: string;
+  daysMap: Record<string, DaySummaryDto>;
+  stats: AdherenceStatsResponseDto | null;
 }
 
 const UKRAINIAN_MONTHS = [
@@ -59,11 +75,35 @@ function formatReadableDate(dateStr: string): string {
   });
 }
 
+function readOfflineTodayCache(): DoseItemDto[] {
+  try {
+    const raw = localStorage.getItem(OFFLINE_TODAY_DOSES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as OfflineTodayCache;
+    return Array.isArray(parsed.doses) ? parsed.doses : [];
+  } catch {
+    return [];
+  }
+}
+
+function readOfflineMetaCache(): OfflineDashboardMetaCache | null {
+  try {
+    const raw = localStorage.getItem(OFFLINE_DASHBOARD_META_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as OfflineDashboardMetaCache;
+  } catch {
+    return null;
+  }
+}
+
 export const DashboardTab: React.FC<DashboardTabProps> = ({
   onNavigateToAdd,
 }) => {
   const todayStr = useMemo(() => toDateStr(new Date()), []);
 
+  const [isOffline, setIsOffline] = useState<boolean>(
+    typeof navigator !== 'undefined' ? !navigator.onLine : false
+  );
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [calendarView, setCalendarView] = useState<'month' | 'week'>('month');
   const [currentMonthDate, setCurrentMonthDate] = useState<Date>(() => {
@@ -71,12 +111,36 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
 
-  const [daysMap, setDaysMap] = useState<Record<string, DaySummaryDto>>({});
-  const [todayDoses, setTodayDoses] = useState<DoseItemDto[]>([]);
-  const [selectedDateDoses, setSelectedDateDoses] = useState<DoseItemDto[]>([]);
-  const [stats, setStats] = useState<AdherenceStatsResponseDto | null>(null);
+  const [daysMap, setDaysMap] = useState<Record<string, DaySummaryDto>>(() => {
+    return readOfflineMetaCache()?.daysMap || {};
+  });
+  const [todayDoses, setTodayDoses] = useState<DoseItemDto[]>(() => {
+    return readOfflineTodayCache();
+  });
+  const [selectedDateDoses, setSelectedDateDoses] = useState<DoseItemDto[]>(
+    () => {
+      return readOfflineTodayCache();
+    }
+  );
+  const [stats, setStats] = useState<AdherenceStatsResponseDto | null>(() => {
+    return readOfflineMetaCache()?.stats || null;
+  });
   const [loading, setLoading] = useState<boolean>(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  // Відстеження подій online / offline у браузері
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Обчислюємо діапазон дат для завантаження календаря та бічної панелі
   const { rangeFrom, rangeTo, calendarCells } = useMemo(() => {
@@ -84,12 +148,14 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
     const month = currentMonthDate.getMonth();
 
     const firstDayOfMonth = new Date(year, month, 1);
-    // Перетворюємо 0 (Нд)..6 (Сб) у 0 (Пн)..6 (Нд)
     const startWeekday = (firstDayOfMonth.getDay() + 6) % 7;
 
     const gridStart = new Date(year, month, 1 - startWeekday);
-    const cells: { dateStr: string; dayNumber: number; isCurrentMonth: boolean }[] =
-      [];
+    const cells: {
+      dateStr: string;
+      dayNumber: number;
+      isCurrentMonth: boolean;
+    }[] = [];
 
     for (let i = 0; i < 42; i++) {
       const cellDate = new Date(
@@ -124,7 +190,32 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
     return calendarCells.slice(weekRowStart, weekRowStart + 7);
   }, [calendarCells, calendarView, selectedDate]);
 
+  const loadFromOfflineCache = useCallback(() => {
+    const cachedToday = readOfflineTodayCache();
+    const cachedMeta = readOfflineMetaCache();
+
+    setTodayDoses(cachedToday);
+    if (cachedMeta) {
+      setDaysMap(cachedMeta.daysMap);
+      setStats(cachedMeta.stats);
+      if (selectedDate === todayStr) {
+        setSelectedDateDoses(cachedToday);
+      } else {
+        setSelectedDateDoses(cachedMeta.daysMap[selectedDate]?.doses || []);
+      }
+    } else {
+      setSelectedDateDoses(selectedDate === todayStr ? cachedToday : []);
+    }
+  }, [selectedDate, todayStr]);
+
   const fetchDashboardData = useCallback(async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setIsOffline(true);
+      loadFromOfflineCache();
+      setLoading(false);
+      return;
+    }
+
     try {
       const [rangeRes, todayRes, selectedRes, statsRes] = await Promise.all([
         scheduleApi.getByRange(rangeFrom, rangeTo),
@@ -135,18 +226,49 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
         scheduleApi.getStats(todayStr),
       ]);
 
+      setIsOffline(false);
       setDaysMap(rangeRes.days);
       setTodayDoses(todayRes.doses);
-      setSelectedDateDoses(
-        selectedRes ? selectedRes.doses : todayRes.doses
-      );
+      setSelectedDateDoses(selectedRes ? selectedRes.doses : todayRes.doses);
       setStats(statsRes);
+
+      // Зберігаємо актуальний розклад на сьогодні та мета-дані у localStorage для офлайн-режиму
+      try {
+        const todayCachePayload: OfflineTodayCache = {
+          savedAt: new Date().toISOString(),
+          date: todayStr,
+          doses: todayRes.doses,
+        };
+        localStorage.setItem(
+          OFFLINE_TODAY_DOSES_KEY,
+          JSON.stringify(todayCachePayload)
+        );
+
+        const metaCachePayload: OfflineDashboardMetaCache = {
+          savedAt: new Date().toISOString(),
+          daysMap: rangeRes.days,
+          stats: statsRes,
+        };
+        localStorage.setItem(
+          OFFLINE_DASHBOARD_META_KEY,
+          JSON.stringify(metaCachePayload)
+        );
+      } catch {
+        // Ігноруємо помилки переповнення localStorage
+      }
     } catch (err) {
-      console.error('Помилка завантаження даних трекера:', err);
+      console.warn(
+        'Мережева помилка при зверненні до API — використовуємо збережений офлайн-кеш:',
+        err
+      );
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        setIsOffline(true);
+      }
+      loadFromOfflineCache();
     } finally {
       setLoading(false);
     }
-  }, [rangeFrom, rangeTo, todayStr, selectedDate]);
+  }, [rangeFrom, rangeTo, todayStr, selectedDate, loadFromOfflineCache]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -160,8 +282,27 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
     try {
       await scheduleApi.updateStatus(scheduleId, newStatus);
       await fetchDashboardData();
-    } catch (err) {
-      console.error('Не вдалося оновити статус прийому:', err);
+    } catch {
+      // Якщо користувач офлайн, оновлюємо локальний кеш для плавної демонстрації
+      const updatedToday = todayDoses.map((d) =>
+        d.id === scheduleId ? { ...d, status: newStatus } : d
+      );
+      setTodayDoses(updatedToday);
+      setSelectedDateDoses((prev) =>
+        prev.map((d) => (d.id === scheduleId ? { ...d, status: newStatus } : d))
+      );
+      try {
+        localStorage.setItem(
+          OFFLINE_TODAY_DOSES_KEY,
+          JSON.stringify({
+            savedAt: new Date().toISOString(),
+            date: todayStr,
+            doses: updatedToday,
+          } satisfies OfflineTodayCache)
+        );
+      } catch {
+        // ignore
+      }
     } finally {
       setUpdatingId(null);
     }
@@ -179,13 +320,19 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
   };
 
   const sortedSidebarDays = useMemo(() => {
-    return Object.values(daysMap).sort((a, b) =>
-      a.date.localeCompare(b.date)
-    );
+    return Object.values(daysMap).sort((a, b) => a.date.localeCompare(b.date));
   }, [daysMap]);
 
   return (
     <div className="space-y-6">
+      {/* Ненав'язливий індикатор офлайн-режиму (показується лише коли немає інтернету) */}
+      {isOffline && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-2xl flex items-center gap-2.5 text-xs sm:text-sm font-medium shadow-xs">
+          <WifiOff className="w-4 h-4 text-amber-600 shrink-0" />
+          <span>Офлайн-режим: показано збережений розклад прийомів</span>
+        </div>
+      )}
+
       {/* 1. Статистика дотримання курсу за тиждень, місяць та сьогодні */}
       <section className="bg-white rounded-3xl p-5 sm:p-6 border border-sage-100 shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
@@ -198,7 +345,8 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
               {stats ? `${stats.weekly.adherencePercent}%` : '—'}
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Випито: {stats ? `${stats.weekly.taken}/${stats.weekly.total}` : '0/0'}
+              Випито:{' '}
+              {stats ? `${stats.weekly.taken}/${stats.weekly.total}` : '0/0'}
             </p>
           </div>
 
@@ -211,7 +359,8 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
               {stats ? `${stats.monthly.adherencePercent}%` : '—'}
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Випито: {stats ? `${stats.monthly.taken}/${stats.monthly.total}` : '0/0'}
+              Випито:{' '}
+              {stats ? `${stats.monthly.taken}/${stats.monthly.total}` : '0/0'}
             </p>
           </div>
 
@@ -462,7 +611,6 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                         {cell.dayNumber}
                       </span>
 
-                      {/* Індикатор виконання: зелена галочка ✓ якщо всі заплановані ліки прийнято */}
                       {summary && summary.total > 0 && (
                         <span>
                           {summary.allCompleted ? (

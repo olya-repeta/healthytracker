@@ -1,8 +1,23 @@
-import React from 'react';
-import { CalendarCheck2, PlusCircle, LogOut, Pill } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import {
+  CalendarCheck2,
+  PlusCircle,
+  LogOut,
+  Pill,
+  Download,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export type ActiveTab = 'dashboard' | 'add-medication';
+
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed';
+    platform: string;
+  }>;
+  prompt(): Promise<void>;
+}
 
 interface NavbarProps {
   activeTab: ActiveTab;
@@ -11,6 +26,39 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
   const { user, logout } = useAuth();
+  const [deferredPrompt, setDeferredPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+    };
+
+    const handleAppInstalled = () => {
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener(
+        'beforeinstallprompt',
+        handleBeforeInstallPrompt
+      );
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    await deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+    }
+  };
 
   return (
     <header className="sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-sage-100">
@@ -59,8 +107,20 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
           </button>
         </nav>
 
-        {/* Інформація про користувача та кнопка виходу */}
-        <div className="flex items-center gap-3">
+        {/* Кнопка встановлення PWA, інформація про користувача та кнопка виходу */}
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          {deferredPrompt && (
+            <button
+              type="button"
+              onClick={handleInstallClick}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-sage-100 hover:bg-sage-200 text-sage-800 border border-sage-200 transition"
+              title="Встановити VitaTrack як додаток на пристрій"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Встановити додаток</span>
+            </button>
+          )}
+
           <div className="hidden md:flex flex-col items-end">
             <span className="text-sm font-semibold text-slate-800">
               {user?.name}

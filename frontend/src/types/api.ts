@@ -110,3 +110,32 @@ export interface AdherenceStatsResponseDto {
   weekly: AdherencePeriodStatsDto;
   monthly: AdherencePeriodStatsDto;
 }
+
+export interface ProductMetricsDto {
+  totalUsers: number;
+  activeCourses: number;
+  takenDoses: number;
+  retentionPercent: number;
+  feedbackCount: number;
+  donateClicks: number;
+  conversionPercent: number;
+}
+
+export interface FeedbackSubmissionDto {
+  type: 'feedback' | 'donate_click';
+  rating?: number;
+  comment?: string;
+}
+
+export interface FeedbackResponseDto {
+  success: boolean;
+  message: string;
+  data?: {
+    id: string;
+    type: string;
+    rating?: number | null;
+    comment?: string | null;
+    userId?: string | null;
+    createdAt: string;
+  };
+}

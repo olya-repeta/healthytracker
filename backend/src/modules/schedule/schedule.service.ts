@@ -1,4 +1,7 @@
 import { AppError } from '../../middlewares/error.middleware';
+import { prisma } from '../../config/prisma';
+import { feedbackStore } from './feedback.store';
+import { CreateFeedbackDto } from './schedule.dto';
 import {
   CreateDoseScheduleInput,
   scheduleRepository,
@@ -188,6 +191,92 @@ export class ScheduleService {
       weekly: calcRate(weekItems, todayStr),
       monthly: calcRate(monthItems, todayStr),
     };
+  }
+
+  async getProductMetrics() {
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    const [totalUsers, activeCourses, takenDoses, usersWithActions] =
+      await Promise.all([
+        prisma.user.count(),
+        prisma.medication.count({
+          where: {
+            endDate: { gte: todayStr },
+          },
+        }),
+        prisma.doseSchedule.count({
+          where: {
+            status: 'TAKEN',
+          },
+        }),
+        prisma.user.findMany({
+          select: {
+            id: true,
+            createdAt: true,
+            schedules: {
+              where: {
+                actionAt: { not: null },
+              },
+              select: {
+                actionAt: true,
+              },
+            },
+          },
+        }),
+      ]);
+
+    // Day-7 Retention % (частка користувачів, які мають зафіксовані дії DoseSchedule.actionAt на 7-й день або пізніше від User.createdAt)
+    let retainedUsersCount = 0;
+    for (const user of usersWithActions) {
+      const userCreatedDate = new Date(user.createdAt);
+      userCreatedDate.setHours(0, 0, 0, 0);
+
+      const hasDay7Action = user.schedules.some((s) => {
+        if (!s.actionAt) return false;
+        const actionDate = new Date(s.actionAt);
+        actionDate.setHours(0, 0, 0, 0);
+        const diffDays = Math.floor(
+          (actionDate.getTime() - userCreatedDate.getTime()) /
+            (1000 * 60 * 60 * 24)
+        );
+        return diffDays >= 7;
+      });
+
+      if (hasDay7Action) {
+        retainedUsersCount++;
+      }
+    }
+
+    const retentionPercent =
+      totalUsers > 0
+        ? Math.round((retainedUsersCount / totalUsers) * 1000) / 10
+        : 0;
+
+    const { feedbackCount, donateClicks } = feedbackStore.getStats();
+
+    const conversionPercent =
+      totalUsers > 0
+        ? Math.round((donateClicks / totalUsers) * 1000) / 10
+        : 0;
+
+    return {
+      totalUsers,
+      activeCourses,
+      takenDoses,
+      retentionPercent,
+      feedbackCount,
+      donateClicks,
+      conversionPercent,
+    };
+  }
+
+  async saveFeedback(data: CreateFeedbackDto, userId?: string | null) {
+    return feedbackStore.add({
+      type: data.type,
+      rating: data.rating,
+      comment: data.comment,
+      userId: userId || null,
+    });
   }
 
   private formatDoseItem(

@@ -4,6 +4,15 @@ import { scheduleController } from './schedule.controller';
 
 const router = Router();
 
+// Публічні ендпоінти метрик валідації (KPI) продукту та відгуку / донату
+router.get('/product-metrics', (req, res, next) =>
+  scheduleController.getProductMetrics(req, res, next)
+);
+router.post('/feedback', (req, res, next) =>
+  scheduleController.submitFeedback(req, res, next)
+);
+
+// Захищені ендпоінти розкладу користувача
 router.use(authMiddleware);
 
 router.get('/by-date', (req, res, next) =>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Pill, Link2, ArrowRight, ShieldCheck, Clock } from 'lucide-react';
 import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
+import { Footer } from '../components/Footer';
 import axios from 'axios';
 
 const rawGoogleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
@@ -70,8 +71,9 @@ export const AuthPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sage-50 via-white to-sage-100 flex items-center justify-center p-4 sm:p-6">
-      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 bg-white rounded-3xl shadow-xl shadow-sage-900/5 border border-sage-100 overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-sage-50 via-white to-sage-100 flex flex-col justify-between">
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
+        <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 bg-white rounded-3xl shadow-xl shadow-sage-900/5 border border-sage-100 overflow-hidden">
         {/* Ліва інформаційна wellness-панель */}
         <div className="lg:col-span-5 bg-sage-600 text-white p-8 sm:p-10 flex flex-col justify-between relative overflow-hidden">
           <div className="relative z-10">
@@ -296,6 +298,8 @@ export const AuthPage: React.FC = () => {
           </div>
         </div>
       </div>
+      </div>
+      <Footer />
     </div>
   );
 };

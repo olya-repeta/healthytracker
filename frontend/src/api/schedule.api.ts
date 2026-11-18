@@ -3,6 +3,9 @@ import {
   AdherenceStatsResponseDto,
   DoseItemDto,
   DoseStatus,
+  FeedbackResponseDto,
+  FeedbackSubmissionDto,
+  ProductMetricsDto,
   ScheduleRangeResponseDto,
 } from '../types/api';
 
@@ -41,6 +44,31 @@ export const scheduleApi = {
     const { data } = await apiClient.patch<{ dose: DoseItemDto }>(
       `/schedule/${scheduleId}/status`,
       { status }
+    );
+    return data;
+  },
+
+  async getProductMetrics(): Promise<ProductMetricsDto> {
+    const { data } = await apiClient.get<ProductMetricsDto>(
+      '/schedule/product-metrics'
+    );
+    return data;
+  },
+
+  async submitFeedback(
+    dto: FeedbackSubmissionDto
+  ): Promise<FeedbackResponseDto> {
+    const { data } = await apiClient.post<FeedbackResponseDto>(
+      '/schedule/feedback',
+      dto
+    );
+    return data;
+  },
+
+  async trackDonateClick(): Promise<FeedbackResponseDto> {
+    const { data } = await apiClient.post<FeedbackResponseDto>(
+      '/schedule/feedback',
+      { type: 'donate_click' }
     );
     return data;
   },

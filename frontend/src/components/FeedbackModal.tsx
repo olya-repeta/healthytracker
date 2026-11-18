@@ -12,6 +12,7 @@ import {
   RefreshCw,
   AlertCircle,
   Heart,
+  Trash2,
 } from 'lucide-react';
 import { scheduleApi } from '../api/schedule.api';
 import { ProductMetricsDto } from '../types/api';
@@ -35,6 +36,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
   isOpen,
   onClose,
 }) => {
+  const { user } = useAuth();
   const [metrics, setMetrics] = useState<ProductMetricsDto | null>(null);
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
   const [metricsError, setMetricsError] = useState<string | null>(null);

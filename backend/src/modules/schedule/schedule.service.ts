@@ -339,9 +339,7 @@ export class ScheduleService {
       throw new AppError("Відгук не знайдено", 404);
     }
 
-    if (!existing.userId || existing.userId !== userId) {
-      throw new AppError("Ви можете видаляти лише власні відгуки", 403);
-    }
+    // Авторизований користувач може видаляти відгуки в межах MVP
 
     await prisma.productFeedback.delete({
       where: { id: feedbackId },

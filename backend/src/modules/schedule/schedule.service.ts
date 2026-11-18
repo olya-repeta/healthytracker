@@ -202,6 +202,7 @@ export class ScheduleService {
       feedbackCount,
       donateClicks,
       usersWithActions,
+      recentFeedbacks,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.medication.count({
@@ -236,6 +237,21 @@ export class ScheduleService {
               actionAt: true,
             },
           },
+        },
+      }),
+      prisma.productFeedback.findMany({
+        where: {
+          type: "feedback",
+          comment: { not: null },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        select: {
+          id: true,
+          rating: true,
+          comment: true,
+          createdAt: true,
+          user: { select: { name: true } },
         },
       }),
     ]);
@@ -280,6 +296,15 @@ export class ScheduleService {
       feedbackCount,
       donateClicks,
       conversionPercent,
+      recentFeedbacks: (recentFeedbacks || [])
+        .filter((f) => f.comment && f.comment.trim().length > 0)
+        .map((f) => ({
+          id: f.id,
+          rating: f.rating ?? 5,
+          comment: f.comment!.trim(),
+          authorName: f.user?.name || "Користувач VitaTrack",
+          createdAt: f.createdAt,
+        })),
     };
   }
 

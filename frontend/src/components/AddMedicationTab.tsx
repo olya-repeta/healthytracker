@@ -244,7 +244,7 @@ export const AddMedicationTab: React.FC<AddMedicationTabProps> = ({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
       {/* Основна форма створення нового препарату/вітаміну */}
-      <div className="lg:col-span-8 bg-white rounded-3xl p-6 sm:p-8 border border-sage-100 shadow-sm">
+      <div className="lg:col-span-8 bg-white rounded-3xl p-4 sm:p-8 border border-sage-100 shadow-sm">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-slate-900">
             Додати новий препарат або вітамін
@@ -328,19 +328,19 @@ export const AddMedicationTab: React.FC<AddMedicationTabProps> = ({
                     <Link2 className="w-3.5 h-3.5 text-sage-600" />
                     <span>Посилання на препарат в аптеці чи магазині (URL)</span>
                   </label>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <input
                       type="url"
                       value={sourceUrl}
                       onChange={(e) => setSourceUrl(e.target.value)}
                       placeholder="https://apteka911.ua/..."
-                      className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-sage-500/30 focus:border-sage-500 transition text-sm"
+                      className="w-full min-w-0 flex-1 px-4 py-2.5 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-sage-500/30 focus:border-sage-500 transition text-sm"
                     />
                     <button
                       type="button"
                       disabled={!sourceUrl.trim() || previewLoading}
                       onClick={() => triggerImagePreview(sourceUrl)}
-                      className="px-3.5 py-2.5 rounded-xl bg-white hover:bg-sage-100 text-sage-800 border border-sage-200 text-xs font-semibold transition shrink-0 disabled:opacity-50"
+                      className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-white hover:bg-sage-100 text-sage-800 border border-sage-200 text-xs font-semibold transition shrink-0 disabled:opacity-50"
                     >
                       Підтягнути фото
                     </button>

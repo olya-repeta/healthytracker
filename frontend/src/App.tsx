@@ -28,10 +28,10 @@ const MainContent: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-sage-50 flex flex-col">
+    <div className="min-h-screen bg-sage-50 flex flex-col overflow-x-hidden">
       <Navbar activeTab={activeTab} onSelectTab={setActiveTab} />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8">
         {activeTab === 'dashboard' && (
           <DashboardTab
             onNavigateToAdd={() => setActiveTab('add-medication')}

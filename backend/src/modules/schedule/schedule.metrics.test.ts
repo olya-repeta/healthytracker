@@ -1,66 +1,8 @@
-import { test, describe, beforeEach } from 'node:test';
+import { test, describe } from 'node:test';
 import assert from 'node:assert';
-import { FeedbackStore } from './feedback.store';
 import { createFeedbackSchema } from './schedule.dto';
 import { scheduleService } from './schedule.service';
 import { prisma } from '../../config/prisma';
-
-describe('FeedbackStore Unit Tests', () => {
-  let store: FeedbackStore;
-
-  beforeEach(() => {
-    // Create an in-memory test store by pointing to a test file path
-    store = new FeedbackStore();
-    store.clear();
-  });
-
-  test('successfully adds a feedback entry with rating and comment', () => {
-    const item = store.add({
-      type: 'feedback',
-      rating: 5,
-      comment: 'Дуже зручний трекер!',
-      userId: 'user-1',
-    });
-
-    assert.ok(item.id);
-    assert.strictEqual(item.type, 'feedback');
-    assert.strictEqual(item.rating, 5);
-    assert.strictEqual(item.comment, 'Дуже зручний трекер!');
-    assert.strictEqual(item.userId, 'user-1');
-    assert.ok(item.createdAt);
-
-    const stats = store.getStats();
-    assert.strictEqual(stats.feedbackCount, 1);
-    assert.strictEqual(stats.donateClicks, 0);
-  });
-
-  test('successfully records donate_click without rating or comment', () => {
-    const item = store.add({
-      type: 'donate_click',
-    });
-
-    assert.strictEqual(item.type, 'donate_click');
-    assert.strictEqual(item.rating, null);
-    assert.strictEqual(item.comment, null);
-
-    const stats = store.getStats();
-    assert.strictEqual(stats.feedbackCount, 0);
-    assert.strictEqual(stats.donateClicks, 1);
-  });
-
-  test('correctly calculates stats for mixed feedback and donate clicks', () => {
-    store.add({ type: 'feedback', rating: 4, comment: 'Добре' });
-    store.add({ type: 'feedback', rating: 5, comment: 'Супер' });
-    store.add({ type: 'donate_click' });
-    store.add({ type: 'donate_click' });
-    store.add({ type: 'donate_click' });
-
-    const stats = store.getStats();
-    assert.strictEqual(stats.feedbackCount, 2);
-    assert.strictEqual(stats.donateClicks, 3);
-    assert.strictEqual(stats.totalEntries, 5);
-  });
-});
 
 describe('Feedback DTO Validation Tests', () => {
   test('validates valid feedback payload', () => {
@@ -115,11 +57,12 @@ describe('Feedback DTO Validation Tests', () => {
   });
 });
 
-describe('Product Metrics & Retention Unit Tests', () => {
+describe('ProductFeedback Prisma Storage & Metrics Unit Tests', () => {
   test('returns 0% retention and 0% conversion safely when there are 0 users', async () => {
     (prisma.user as any).count = async () => 0;
     (prisma.medication as any).count = async () => 0;
     (prisma.doseSchedule as any).count = async () => 0;
+    (prisma.productFeedback as any).count = async () => 0;
     (prisma.user as any).findMany = async () => [];
 
     const metrics = await scheduleService.getProductMetrics();
@@ -128,18 +71,25 @@ describe('Product Metrics & Retention Unit Tests', () => {
     assert.strictEqual(metrics.activeCourses, 0);
     assert.strictEqual(metrics.takenDoses, 0);
     assert.strictEqual(metrics.retentionPercent, 0);
+    assert.strictEqual(metrics.feedbackCount, 0);
+    assert.strictEqual(metrics.donateClicks, 0);
     assert.strictEqual(metrics.conversionPercent, 0);
   });
 
-  test('correctly calculates Day-7 retention when users have actions >= 7 days', async () => {
+  test('correctly calculates Day-7 retention and conversion from DB counts', async () => {
     const now = new Date();
-    const day0 = new Date(now.getTime() - 10 * 86400000); // 10 days ago
-    const day8Action = new Date(day0.getTime() + 8 * 86400000); // 8 days after user creation
-    const day2Action = new Date(day0.getTime() + 2 * 86400000); // 2 days after user creation
+    const day0 = new Date(now.getTime() - 10 * 86400000);
+    const day8Action = new Date(day0.getTime() + 8 * 86400000);
+    const day2Action = new Date(day0.getTime() + 2 * 86400000);
 
     (prisma.user as any).count = async () => 2;
     (prisma.medication as any).count = async () => 4;
     (prisma.doseSchedule as any).count = async () => 15;
+    (prisma.productFeedback as any).count = async (args?: any) => {
+      if (args?.where?.type === 'feedback') return 3;
+      if (args?.where?.type === 'donate_click') return 1;
+      return 4;
+    };
     (prisma.user as any).findMany = async () => [
       {
         id: 'user-retained',
@@ -160,5 +110,53 @@ describe('Product Metrics & Retention Unit Tests', () => {
     assert.strictEqual(metrics.takenDoses, 15);
     // 1 user retained out of 2 users = 50%
     assert.strictEqual(metrics.retentionPercent, 50);
+    assert.strictEqual(metrics.feedbackCount, 3);
+    assert.strictEqual(metrics.donateClicks, 1);
+    // 1 donate click / 2 users = 50%
+    assert.strictEqual(metrics.conversionPercent, 50);
+  });
+
+  test('saves feedback record to prisma productFeedback table', async () => {
+    let capturedData: any = null;
+    (prisma.productFeedback as any).create = async (args: any) => {
+      capturedData = args.data;
+      return { id: 'test-feedback-uuid', ...args.data, createdAt: new Date() };
+    };
+
+    const res = await scheduleService.saveFeedback(
+      {
+        type: 'feedback',
+        rating: 5,
+        comment: 'Чудовий трекер!',
+      },
+      'test-user-id'
+    );
+
+    assert.strictEqual(res.id, 'test-feedback-uuid');
+    assert.strictEqual(capturedData.type, 'feedback');
+    assert.strictEqual(capturedData.rating, 5);
+    assert.strictEqual(capturedData.comment, 'Чудовий трекер!');
+    assert.strictEqual(capturedData.userId, 'test-user-id');
+  });
+
+  test('saves donate_click record to prisma productFeedback table without rating or comment', async () => {
+    let capturedData: any = null;
+    (prisma.productFeedback as any).create = async (args: any) => {
+      capturedData = args.data;
+      return { id: 'test-click-uuid', ...args.data, createdAt: new Date() };
+    };
+
+    const res = await scheduleService.saveFeedback(
+      {
+        type: 'donate_click',
+      },
+      null
+    );
+
+    assert.strictEqual(res.id, 'test-click-uuid');
+    assert.strictEqual(capturedData.type, 'donate_click');
+    assert.strictEqual(capturedData.rating, null);
+    assert.strictEqual(capturedData.comment, null);
+    assert.strictEqual(capturedData.userId, null);
   });
 });

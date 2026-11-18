@@ -52,7 +52,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
       const data = await scheduleApi.getProductMetrics();
       setMetrics(data);
     } catch {
-      setMetricsError('Не вдалося завантажити показники продукту.');
+      setMetricsError('Не вдалося завантажити актуальні метрики з сервера.');
     } finally {
       setIsLoadingMetrics(false);
     }

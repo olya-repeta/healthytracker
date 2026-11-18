@@ -1,6 +1,5 @@
 import { AppError } from '../../middlewares/error.middleware';
 import { prisma } from '../../config/prisma';
-import { feedbackStore } from './feedback.store';
 import { CreateFeedbackDto } from './schedule.dto';
 import {
   CreateDoseScheduleInput,
@@ -195,109 +194,103 @@ export class ScheduleService {
 
   async getProductMetrics() {
     const todayStr = new Date().toISOString().slice(0, 10);
-    const { feedbackCount, donateClicks } = feedbackStore.getStats();
 
-    try {
-      const [totalUsers, activeCourses, takenDoses, usersWithActions] =
-        await Promise.all([
-          prisma.user.count(),
-          prisma.medication.count({
+    const [
+      totalUsers,
+      activeCourses,
+      takenDoses,
+      feedbackCount,
+      donateClicks,
+      usersWithActions,
+    ] = await Promise.all([
+      prisma.user.count(),
+      prisma.medication.count({
+        where: {
+          endDate: { gte: todayStr },
+        },
+      }),
+      prisma.doseSchedule.count({
+        where: {
+          status: 'TAKEN',
+        },
+      }),
+      prisma.productFeedback.count({
+        where: {
+          type: 'feedback',
+        },
+      }),
+      prisma.productFeedback.count({
+        where: {
+          type: 'donate_click',
+        },
+      }),
+      prisma.user.findMany({
+        select: {
+          id: true,
+          createdAt: true,
+          schedules: {
             where: {
-              endDate: { gte: todayStr },
+              actionAt: { not: null },
             },
-          }),
-          prisma.doseSchedule.count({
-            where: {
-              status: 'TAKEN',
-            },
-          }),
-          prisma.user.findMany({
             select: {
-              id: true,
-              createdAt: true,
-              schedules: {
-                where: {
-                  actionAt: { not: null },
-                },
-                select: {
-                  actionAt: true,
-                },
-              },
+              actionAt: true,
             },
-          }),
-        ]);
+          },
+        },
+      }),
+    ]);
 
-      // Day-7 Retention % (частка користувачів, які мають зафіксовані дії DoseSchedule.actionAt на 7-й день або пізніше від User.createdAt)
-      let retainedUsersCount = 0;
-      for (const user of usersWithActions) {
-        const userCreatedDate = new Date(user.createdAt);
-        userCreatedDate.setHours(0, 0, 0, 0);
+    // Day-7 Retention % (частка користувачів, які мають зафіксовані дії DoseSchedule.actionAt на 7-й день або пізніше від User.createdAt)
+    let retainedUsersCount = 0;
+    for (const user of usersWithActions) {
+      const userCreatedDate = new Date(user.createdAt);
+      userCreatedDate.setHours(0, 0, 0, 0);
 
-        const hasDay7Action = user.schedules.some((s) => {
-          if (!s.actionAt) return false;
-          const actionDate = new Date(s.actionAt);
-          actionDate.setHours(0, 0, 0, 0);
-          const diffDays = Math.floor(
-            (actionDate.getTime() - userCreatedDate.getTime()) /
-              (1000 * 60 * 60 * 24)
-          );
-          return diffDays >= 7;
-        });
+      const hasDay7Action = user.schedules.some((s) => {
+        if (!s.actionAt) return false;
+        const actionDate = new Date(s.actionAt);
+        actionDate.setHours(0, 0, 0, 0);
+        const diffDays = Math.floor(
+          (actionDate.getTime() - userCreatedDate.getTime()) /
+            (1000 * 60 * 60 * 24)
+        );
+        return diffDays >= 7;
+      });
 
-        if (hasDay7Action) {
-          retainedUsersCount++;
-        }
+      if (hasDay7Action) {
+        retainedUsersCount++;
       }
-
-      const retentionPercent =
-        totalUsers > 0
-          ? Math.round((retainedUsersCount / totalUsers) * 1000) / 10
-          : 0;
-
-      const conversionPercent =
-        totalUsers > 0
-          ? Math.round((donateClicks / totalUsers) * 1000) / 10
-          : 0;
-
-      return {
-        totalUsers,
-        activeCourses,
-        takenDoses,
-        retentionPercent,
-        feedbackCount,
-        donateClicks,
-        conversionPercent,
-      };
-    } catch (error) {
-      console.warn(
-        '[ScheduleService] Database connection error during getProductMetrics, returning fallback metrics:',
-        error instanceof Error ? error.message : error
-      );
-      // Безпечний фолбек для офлайн-режиму або локальної розробки без запущеного PostgreSQL
-      const fallbackTotalUsers = 12;
-      const conversionPercent =
-        fallbackTotalUsers > 0
-          ? Math.round((donateClicks / fallbackTotalUsers) * 1000) / 10
-          : 0;
-
-      return {
-        totalUsers: fallbackTotalUsers,
-        activeCourses: 7,
-        takenDoses: 54,
-        retentionPercent: 41.7,
-        feedbackCount,
-        donateClicks,
-        conversionPercent,
-      };
     }
+
+    const retentionPercent =
+      totalUsers > 0
+        ? Math.round((retainedUsersCount / totalUsers) * 1000) / 10
+        : 0;
+
+    const conversionPercent =
+      totalUsers > 0
+        ? Math.round((donateClicks / totalUsers) * 1000) / 10
+        : 0;
+
+    return {
+      totalUsers,
+      activeCourses,
+      takenDoses,
+      retentionPercent,
+      feedbackCount,
+      donateClicks,
+      conversionPercent,
+    };
   }
 
   async saveFeedback(data: CreateFeedbackDto, userId?: string | null) {
-    return feedbackStore.add({
-      type: data.type,
-      rating: data.rating,
-      comment: data.comment,
-      userId: userId || null,
+    return prisma.productFeedback.create({
+      data: {
+        type: data.type,
+        rating: data.rating ?? null,
+        comment: data.comment ? data.comment.trim() : null,
+        userId: userId || null,
+      },
     });
   }
 

@@ -399,7 +399,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
             )}
           </div>
 
-          {/* Секція 2.5: Останні відгуки користувачів */}
+          {/* Секція 2.5: Усі відгуки користувачів */}
           {metrics?.recentFeedbacks && metrics.recentFeedbacks.length > 0 && (
             <div className="bg-slate-50/70 p-4 sm:p-5 rounded-2xl border border-slate-200/80 space-y-3">
               <div className="flex items-center justify-between">
@@ -408,7 +408,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
                   <span>Останні відгуки користувачів</span>
                 </h4>
                 <span className="text-xs text-slate-400">
-                  Показано {metrics.recentFeedbacks.length}
+                  Усього з коментарем: {metrics.recentFeedbacks.length}
                 </span>
               </div>
               <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">

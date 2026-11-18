@@ -245,7 +245,6 @@ export class ScheduleService {
           comment: { not: null },
         },
         orderBy: { createdAt: "desc" },
-        take: 10,
         select: {
           id: true,
           rating: true,

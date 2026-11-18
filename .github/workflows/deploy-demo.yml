@@ -13,16 +13,26 @@ jobs:
     steps:
       - name: Deploy to AWS EC2 via SSH
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_BOT_USERNAME: ${{ secrets.TELEGRAM_BOT_USERNAME }}
+          TELEGRAM_WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
         with:
           host: ${{ secrets.AWS_HOST }}
           username: ${{ secrets.AWS_USER }}
           key: ${{ secrets.AWS_SSH_KEY }}
           port: 22
+          envs: TELEGRAM_BOT_TOKEN,TELEGRAM_BOT_USERNAME,TELEGRAM_WEBHOOK_SECRET
           script: |
             set -e
             cd ~/vitatrack
             git fetch origin
             git checkout main
             git reset --hard origin/main
+            touch .env
+            sed -i '/^TELEGRAM_BOT_TOKEN=/d;/^TELEGRAM_BOT_USERNAME=/d;/^TELEGRAM_WEBHOOK_SECRET=/d' .env
+            echo "TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN" >> .env
+            echo "TELEGRAM_BOT_USERNAME=$TELEGRAM_BOT_USERNAME" >> .env
+            echo "TELEGRAM_WEBHOOK_SECRET=$TELEGRAM_WEBHOOK_SECRET" >> .env
             docker compose up --build -d
             docker image prune -f

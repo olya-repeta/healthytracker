@@ -3,6 +3,7 @@ import cors from 'cors';
 import authRoutes from './modules/auth/auth.routes';
 import medicationsRoutes from './modules/medications/medications.routes';
 import scheduleRoutes from './modules/schedule/schedule.routes';
+import telegramRoutes from './modules/telegram/telegram.routes';
 import { errorHandler } from './middlewares/error.middleware';
 import { env } from './config/env';
 
@@ -47,6 +48,7 @@ export const createApp = () => {
   app.use('/api/auth', authRoutes);
   app.use('/api/medications', medicationsRoutes);
   app.use('/api/schedule', scheduleRoutes);
+  app.use('/api/telegram', telegramRoutes);
 
   // Глобальний обробник помилок
   app.use(errorHandler);

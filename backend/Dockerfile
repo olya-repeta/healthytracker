@@ -26,4 +26,4 @@ COPY --from=builder /app/prisma ./prisma
 
 EXPOSE 4000
 
-CMD ["sh", "-c", "npx prisma db push && node dist/server.js"]
+CMD ["sh", "-c", "(npx prisma migrate deploy || (npx prisma migrate resolve --applied 20261118000000_add_telegram_notifications && npx prisma db push --accept-data-loss=false) || npx prisma db push --accept-data-loss=false) && node dist/server.js"]

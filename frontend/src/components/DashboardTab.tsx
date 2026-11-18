@@ -14,7 +14,9 @@ import {
   AlertCircle,
   WifiOff,
   RefreshCw,
+  Send,
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { scheduleApi } from '../api/schedule.api';
 import {
   AdherenceStatsResponseDto,
@@ -25,6 +27,7 @@ import {
 
 interface DashboardTabProps {
   onNavigateToAdd: () => void;
+  onNavigateToSettings?: () => void;
 }
 
 const OFFLINE_TODAY_DOSES_KEY = 'vitatrack_offline_today_doses';
@@ -196,7 +199,9 @@ function readOfflineMetaCache(): OfflineDashboardMetaCache | null {
 
 export const DashboardTab: React.FC<DashboardTabProps> = ({
   onNavigateToAdd,
+  onNavigateToSettings,
 }) => {
+  const { user } = useAuth();
   const todayStr = useMemo(() => toDateStr(new Date()), []);
 
   const [isOffline, setIsOffline] = useState<boolean>(
@@ -567,6 +572,25 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
               ? `Офлайн-режим: показано збережений розклад (несинхронізованих змін: ${syncQueueCount})`
               : 'Офлайн-режим: показано збережений розклад прийомів'}
           </span>
+        </div>
+      )}
+
+      {/* Банер пропозиції підключити Telegram-нагадування */}
+      {!user?.isTelegramConnected && onNavigateToSettings && (
+        <div className="bg-sky-50 border border-sky-200 text-sky-900 px-4 py-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-sm shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <Send className="w-4 h-4 text-sky-500 shrink-0" />
+            <span>
+              Отримуйте персональні нагадування про прийом ліків у Telegram у точний запланований час.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onNavigateToSettings}
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-semibold text-xs transition shrink-0"
+          >
+            <span>Підключити Telegram</span>
+          </button>
         </div>
       )}
 

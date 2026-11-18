@@ -66,7 +66,7 @@ export const AddMedicationTab: React.FC<AddMedicationTabProps> = ({
 
   const [frequencyType, setFrequencyType] = useState<FrequencyType>('DAILY');
   const [timesPerDay, setTimesPerDay] = useState<number>(1);
-  const [timesOfDay, setTimesOfDay] = useState<string[]>(['09:00']);
+  const [timesOfDay, setTimesOfDay] = useState<string[]>(['06:00']);
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>([1, 3, 5]);
   const [startDate, setStartDate] = useState<string>(getTodayDateString());
   const [durationDays, setDurationDays] = useState<number>(30);
@@ -148,13 +148,13 @@ export const AddMedicationTab: React.FC<AddMedicationTabProps> = ({
   // Синхронізація кількості полів вибору часу прийому (наприклад, 1, 2, 3 або 4 рази на день)
   const handleTimesPerDayChange = (count: number) => {
     const presets: Record<number, string[]> = {
-      1: ['09:00'],
-      2: ['09:00', '20:00'],
-      3: ['09:00', '14:00', '21:00'],
-      4: ['08:00', '12:00', '16:00', '21:00'],
+      1: ['06:00'],
+      2: ['06:00', '20:00'],
+      3: ['06:00', '14:00', '21:00'],
+      4: ['06:00', '12:00', '16:00', '21:00'],
     };
     setTimesPerDay(count);
-    setTimesOfDay(presets[count] || ['09:00']);
+    setTimesOfDay(presets[count] || ['06:00']);
   };
 
   const handleTimeSlotChange = (index: number, value: string) => {

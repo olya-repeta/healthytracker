@@ -23,7 +23,8 @@ export const createMedicationSchema = z.object({
         .string()
         .regex(/^\d{2}:\d{2}$/, 'Час прийому має бути у форматі HH:mm')
     )
-    .min(1, 'Оберіть хоча б один час прийому'),
+    .min(1, 'Оберіть хоча б один час прийому')
+    .default(['06:00']),
   daysOfWeek: z
     .array(z.number().int().min(0).max(6))
     .optional()

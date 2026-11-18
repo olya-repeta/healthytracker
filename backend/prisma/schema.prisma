@@ -21,6 +21,7 @@ model User {
   timezone          String         @default("Europe/Kyiv")
   medications       Medication[]
   schedules         DoseSchedule[]
+  feedbacks         ProductFeedback[]
 }
 
 model Medication {
@@ -64,4 +65,18 @@ model DoseSchedule {
   @@index([userId, scheduledDate])
   @@index([medicationId])
   @@index([status, notifiedAt])
+}
+
+model ProductFeedback {
+  id        String   @id @default(uuid())
+  type      String   // "feedback" | "donate_click"
+  rating    Int?
+  comment   String?
+  userId    String?
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([type])
+  @@index([userId])
 }

@@ -10,3 +10,4 @@ build/
 coverage/
 .serverless/
 npm-debug.log*
+backend/data/

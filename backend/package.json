@@ -11,7 +11,9 @@
     "test": "tsx --test src/**/*.test.ts",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "prisma:migrate": "prisma migrate deploy"
+    "prisma:migrate": "prisma migrate deploy",
+    "prisma:migrate:status": "prisma migrate status",
+    "prisma:migrate:resolve": "prisma migrate resolve --applied 20261118000000_add_telegram_notifications && prisma migrate resolve --applied 20261118180000_add_product_feedback"
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",

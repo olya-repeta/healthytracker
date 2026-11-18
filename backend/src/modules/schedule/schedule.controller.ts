@@ -1,5 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
+import { env } from '../../config/env';
+import { JwtUserPayload } from '../../middlewares/auth.middleware';
 import {
+  createFeedbackSchema,
   dateRangeQuerySchema,
   singleDateQuerySchema,
   updateDoseStatusSchema,
@@ -7,6 +11,52 @@ import {
 import { scheduleService } from './schedule.service';
 
 export class ScheduleController {
+  async getProductMetrics(
+    _req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const metrics = await scheduleService.getProductMetrics();
+      res.status(200).json(metrics);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async submitFeedback(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const dto = createFeedbackSchema.parse(req.body);
+
+      let userId = req.user?.userId || null;
+      if (!userId && req.headers.authorization?.startsWith('Bearer ')) {
+        try {
+          const token = req.headers.authorization.split(' ')[1];
+          const decoded = jwt.verify(token, env.JWT_SECRET) as JwtUserPayload;
+          userId = decoded.userId;
+        } catch {
+          // Ігноруємо помилки перевірки токена для публічного відгуку
+        }
+      }
+
+      const item = await scheduleService.saveFeedback(dto, userId);
+      res.status(201).json({
+        success: true,
+        message:
+          dto.type === 'donate_click'
+            ? 'Клік на підтримку зафіксовано'
+            : 'Дякуємо за ваш відгук!',
+        data: item,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getByDate(
     req: Request,
     res: Response,

@@ -5,6 +5,7 @@ import { ActiveTab, Navbar } from './components/Navbar';
 import { DashboardTab } from './components/DashboardTab';
 import { AddMedicationTab } from './components/AddMedicationTab';
 import { SettingsTab } from './components/SettingsTab';
+import { Footer } from './components/Footer';
 
 const MainContent: React.FC = () => {
   const { user, isLoading } = useAuth();
@@ -28,7 +29,7 @@ const MainContent: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-sage-50 flex flex-col overflow-x-hidden">
+    <div className="min-h-screen bg-sage-50 flex flex-col justify-between overflow-x-hidden">
       <Navbar activeTab={activeTab} onSelectTab={setActiveTab} />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8">
@@ -45,6 +46,8 @@ const MainContent: React.FC = () => {
         )}
         {activeTab === 'settings' && <SettingsTab />}
       </main>
+
+      <Footer />
     </div>
   );
 };

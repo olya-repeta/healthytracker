@@ -24,13 +24,17 @@ export type RegisterDto = z.infer<typeof registerSchema>;
 export type LoginDto = z.infer<typeof loginSchema>;
 export type GoogleLoginDto = z.infer<typeof googleLoginSchema>;
 
+export interface UserDto {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl?: string | null;
+  createdAt: Date;
+  isTelegramConnected: boolean;
+  timezone: string;
+}
+
 export interface AuthResponseDto {
   token: string;
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    avatarUrl?: string | null;
-    createdAt: Date;
-  };
+  user: UserDto;
 }

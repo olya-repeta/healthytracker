@@ -5,10 +5,11 @@ import {
   LogOut,
   Pill,
   Download,
+  Settings,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-export type ActiveTab = 'dashboard' | 'add-medication';
+export type ActiveTab = 'dashboard' | 'add-medication' | 'settings';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -105,6 +106,19 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
             <PlusCircle className="w-4 h-4" />
             <span>Додати препарат</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => onSelectTab('settings')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              activeTab === 'settings'
+                ? 'bg-white text-sage-800 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+            <span>Налаштування</span>
+          </button>
         </nav>
 
         {/* Кнопка встановлення PWA, інформація про користувача та кнопка виходу */}
@@ -121,12 +135,17 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
             </button>
           )}
 
-          <div className="hidden md:flex flex-col items-end">
+          <button
+            type="button"
+            onClick={() => onSelectTab('settings')}
+            className="hidden md:flex flex-col items-end text-right hover:opacity-80 transition cursor-pointer"
+            title="Перейти до налаштувань профілю"
+          >
             <span className="text-sm font-semibold text-slate-800">
               {user?.name}
             </span>
             <span className="text-xs text-slate-500">{user?.email}</span>
-          </div>
+          </button>
           <button
             type="button"
             onClick={logout}

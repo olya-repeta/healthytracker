@@ -46,6 +46,8 @@ export class AuthService {
         email: user.email,
         avatarUrl: user.avatarUrl,
         createdAt: user.createdAt,
+        isTelegramConnected: Boolean(user.telegramChatId),
+        timezone: user.timezone || 'Europe/Kyiv',
       },
     };
   }
@@ -85,6 +87,8 @@ export class AuthService {
         email: user.email,
         avatarUrl: user.avatarUrl,
         createdAt: user.createdAt,
+        isTelegramConnected: Boolean(user.telegramChatId),
+        timezone: user.timezone || 'Europe/Kyiv',
       },
     };
   }
@@ -147,6 +151,8 @@ export class AuthService {
         email: user.email,
         avatarUrl: user.avatarUrl,
         createdAt: user.createdAt,
+        isTelegramConnected: Boolean(user.telegramChatId),
+        timezone: user.timezone || 'Europe/Kyiv',
       },
     };
   }
@@ -162,6 +168,8 @@ export class AuthService {
       email: user.email,
       avatarUrl: user.avatarUrl,
       createdAt: user.createdAt,
+      isTelegramConnected: Boolean(user.telegramChatId),
+      timezone: user.timezone || 'Europe/Kyiv',
     };
   }
 }

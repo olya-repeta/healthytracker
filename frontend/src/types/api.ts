@@ -6,6 +6,8 @@ export interface UserDto {
   email: string;
   avatarUrl?: string | null;
   createdAt: string;
+  isTelegramConnected: boolean;
+  timezone: string;
 }
 
 export interface AuthResponseDto {

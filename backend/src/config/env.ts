@@ -22,4 +22,11 @@ export const env = {
   CORS_ORIGIN:
     sanitizeEnvValue(process.env.CORS_ORIGIN) ||
     'https://13.60.250.145.nip.io,http://13.60.250.145.nip.io,http://13.60.250.145,http://localhost:5173,http://localhost:4173,http://localhost',
+  TELEGRAM_BOT_TOKEN: sanitizeEnvValue(process.env.TELEGRAM_BOT_TOKEN),
+  TELEGRAM_BOT_USERNAME: sanitizeEnvValue(
+    process.env.TELEGRAM_BOT_USERNAME
+  ).replace(/^@/, ''),
+  TELEGRAM_WEBHOOK_SECRET: sanitizeEnvValue(
+    process.env.TELEGRAM_WEBHOOK_SECRET
+  ),
 };

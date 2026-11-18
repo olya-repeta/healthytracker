@@ -22,6 +22,7 @@ interface AuthContextValue {
   register: (name: string, email: string, password: string) => Promise<void>;
   loginWithGoogle: (idToken: string) => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -192,6 +193,8 @@ function decodeUserFromJwt(token: string): UserDto | null {
       email: parsed.email,
       name: parsed.name || parsed.email.split('@')[0],
       createdAt: new Date().toISOString(),
+      isTelegramConnected: false,
+      timezone: 'Europe/Kyiv',
     };
   } catch {
     return null;
@@ -382,9 +385,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setUser(null);
   };
 
+  const refreshUser = async () => {
+    try {
+      const res = await authApi.getMe();
+      setUser(res.user);
+      saveCachedUser(res.user);
+    } catch (err) {
+      console.warn('Не вдалося оновити профіль користувача:', err);
+    }
+  };
+
   return (
     <AuthContext.Provider
-      value={{ user, isLoading, login, register, loginWithGoogle, logout }}
+      value={{
+        user,
+        isLoading,
+        login,
+        register,
+        loginWithGoogle,
+        logout,
+        refreshUser,
+      }}
     >
       {children}
     </AuthContext.Provider>

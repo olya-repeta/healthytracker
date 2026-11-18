@@ -32,7 +32,7 @@ COPY --from=backend-builder /app/backend/node_modules ./node_modules
 COPY --from=backend-builder /app/backend/dist ./dist
 COPY --from=backend-builder /app/backend/prisma ./prisma
 EXPOSE 4000
-CMD ["sh", "-c", "npx prisma db push && node dist/server.js"]
+CMD ["sh", "-c", "(npx prisma migrate deploy || (npx prisma migrate resolve --applied 20261118000000_add_telegram_notifications && npx prisma db push --accept-data-loss=false) || npx prisma db push --accept-data-loss=false) && node dist/server.js"]
 
 # Stage 4: Production Frontend Runtime (Nginx)
 FROM nginx:alpine AS frontend-production

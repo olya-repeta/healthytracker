@@ -14,10 +14,13 @@ model User {
   passwordHash String?
   googleId     String?        @unique
   avatarUrl    String?
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  medications  Medication[]
-  schedules    DoseSchedule[]
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  telegramChatId    String?        @unique
+  telegramLinkToken String?        @unique
+  timezone          String         @default("Europe/Kyiv")
+  medications       Medication[]
+  schedules         DoseSchedule[]
 }
 
 model Medication {
@@ -53,10 +56,12 @@ model DoseSchedule {
   actionAt      DateTime?   // Час фактичної відмітки користувачем
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+  notifiedAt    DateTime?
 
   medication    Medication  @relation(fields: [medicationId], references: [id], onDelete: Cascade)
   user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, scheduledDate])
   @@index([medicationId])
+  @@index([status, notifiedAt])
 }

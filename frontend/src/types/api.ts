@@ -25,6 +25,7 @@ export interface MedicationDto {
   dosage: string;
   sourceUrl: string | null;
   imageUrl: string;
+  packagingImageUrl?: string | null;
   frequencyType: FrequencyType;
   timesPerDay: number;
   timesOfDay: string[];
@@ -40,6 +41,7 @@ export interface CreateMedicationRequestDto {
   dosage: string;
   sourceUrl?: string | null;
   imageUrl?: string | null;
+  packagingImageUrl?: string | null;
   frequencyType: FrequencyType;
   timesPerDay: number;
   timesOfDay: string[];

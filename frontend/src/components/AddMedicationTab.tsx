@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { medicationsApi } from '../api/medications.api';
 import { FrequencyType, MedicationDto } from '../types/api';
+import { prepareMedicationPhotoPreview } from '../utils/imageUpload';
 import axios from 'axios';
 
 interface AddMedicationTabProps {
@@ -374,6 +375,32 @@ export const AddMedicationTab: React.FC<AddMedicationTabProps> = ({
                     onChange={(e) => setCustomImageUrl(e.target.value)}
                     placeholder="https://.../product-photo.jpg"
                     className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white/90 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sage-500/30 focus:border-sage-500 transition text-xs"
+                  />
+                </div>
+
+                {/* Завантаження власного фото пакування з пристрою (опціонально) */}
+                <div className="pt-1">
+                  <label className="block text-xs font-medium text-slate-600 mb-1">
+                    Або прикріпіть власне фото пакування препарату (опціонально):
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      try {
+                        const dataUrl = await prepareMedicationPhotoPreview(file);
+                        setCustomImageUrl(dataUrl);
+                      } catch (uploadErr) {
+                        setError(
+                          uploadErr instanceof Error
+                            ? uploadErr.message
+                            : 'Не вдалося завантажити фото пакування'
+                        );
+                      }
+                    }}
+                    className="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-sage-200 file:text-xs file:font-semibold file:bg-white file:text-sage-800 hover:file:bg-sage-100 cursor-pointer"
                   />
                 </div>
               </div>

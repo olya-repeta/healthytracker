@@ -15,6 +15,10 @@ router.post('/feedback', (req, res, next) =>
 // Захищені ендпоінти розкладу користувача
 router.use(authMiddleware);
 
+router.delete("/feedback/:id", (req, res, next) =>
+  scheduleController.deleteFeedback(req, res, next)
+);
+
 router.get('/by-date', (req, res, next) =>
   scheduleController.getByDate(req, res, next)
 );

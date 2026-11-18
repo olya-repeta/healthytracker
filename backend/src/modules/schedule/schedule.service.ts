@@ -250,6 +250,7 @@ export class ScheduleService {
           id: true,
           rating: true,
           comment: true,
+          userId: true,
           createdAt: true,
           user: { select: { name: true } },
         },
@@ -302,6 +303,7 @@ export class ScheduleService {
           id: f.id,
           rating: f.rating ?? 5,
           comment: f.comment!.trim(),
+          userId: f.userId,
           authorName: f.user?.name || "Користувач VitaTrack",
           createdAt: f.createdAt,
         })),
@@ -325,6 +327,25 @@ export class ScheduleService {
         comment: data.comment ?? null,
         userId: validUserId,
       },
+    });
+  }
+
+  async deleteFeedback(feedbackId: string, userId: string) {
+    const existing = await prisma.productFeedback.findUnique({
+      where: { id: feedbackId },
+      select: { id: true, userId: true, type: true },
+    });
+
+    if (!existing || existing.type !== "feedback") {
+      throw new AppError("Відгук не знайдено", 404);
+    }
+
+    if (!existing.userId || existing.userId !== userId) {
+      throw new AppError("Ви можете видаляти лише власні відгуки", 403);
+    }
+
+    await prisma.productFeedback.delete({
+      where: { id: feedbackId },
     });
   }
 

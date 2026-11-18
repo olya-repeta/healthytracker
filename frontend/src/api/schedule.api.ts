@@ -65,6 +65,13 @@ export const scheduleApi = {
     return data;
   },
 
+  async deleteFeedback(feedbackId: string): Promise<{ success: boolean; message: string }> {
+    const { data } = await apiClient.delete<{ success: boolean; message: string }>(
+      `/schedule/feedback/${feedbackId}`
+    );
+    return data;
+  },
+
   async trackDonateClick(): Promise<FeedbackResponseDto> {
     const { data } = await apiClient.post<FeedbackResponseDto>(
       '/schedule/feedback',

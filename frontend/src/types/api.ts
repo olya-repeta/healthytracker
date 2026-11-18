@@ -121,6 +121,7 @@ export interface ProductMetricsDto {
   conversionPercent: number;
   recentFeedbacks?: Array<{
     id: string;
+    userId?: string | null;
     rating: number;
     comment: string;
     authorName: string;

@@ -57,6 +57,21 @@ export class ScheduleController {
     }
   }
 
+  async deleteFeedback(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const userId = req.user!.userId;
+      const feedbackId = String(req.params.id);
+      await scheduleService.deleteFeedback(feedbackId, userId);
+      res.status(200).json({ success: true, message: "Відгук видалено" });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getByDate(
     req: Request,
     res: Response,

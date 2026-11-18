@@ -16,6 +16,7 @@ import {
 import { scheduleApi } from '../api/schedule.api';
 import { ProductMetricsDto } from '../types/api';
 import { MONOBANK_JAR_URL } from '../config/constants';
+import { useAuth } from '../context/AuthContext';
 
 interface FeedbackModalProps {
   isOpen: boolean;
@@ -44,6 +45,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadMetrics = useCallback(async () => {
     setIsLoadingMetrics(true);
@@ -100,6 +102,18 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
       );
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteFeedback = async (feedbackId: string) => {
+    setDeletingId(feedbackId);
+    try {
+      await scheduleApi.deleteFeedback(feedbackId);
+      await loadMetrics();
+    } catch {
+      setSubmitError("Не вдалося видалити відгук.");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -405,8 +419,9 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
                       <span className="text-xs font-semibold text-slate-700">
                         {item.authorName}
                       </span>
-                      <div className="flex items-center gap-0.5">
-                        {[1, 2, 3, 4, 5].map((s) => (
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-0.5">
+                          {[1, 2, 3, 4, 5].map((s) => (
                           <Star
                             key={s}
                             className={`w-3.5 h-3.5 ${
@@ -415,7 +430,20 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
                                 : "text-slate-200"
                             }`}
                           />
-                        ))}
+                          ))}
+                        </div>
+                        {user && item.userId === user.id && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteFeedback(item.id)}
+                            disabled={deletingId === item.id}
+                            className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition disabled:opacity-50"
+                            title="Видалити свій відгук"
+                            aria-label="Видалити свій відгук"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
                     <p className="text-xs text-slate-600 leading-relaxed break-words">

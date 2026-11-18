@@ -383,6 +383,57 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
             )}
           </div>
 
+          {/* Секція 2.5: Останні відгуки користувачів */}
+          {metrics?.recentFeedbacks && metrics.recentFeedbacks.length > 0 && (
+            <div className="bg-slate-50/70 p-4 sm:p-5 rounded-2xl border border-slate-200/80 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
+                  <MessageSquare className="w-4 h-4 text-sage-600" />
+                  <span>Останні відгуки користувачів</span>
+                </h4>
+                <span className="text-xs text-slate-400">
+                  Показано {metrics.recentFeedbacks.length}
+                </span>
+              </div>
+              <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+                {metrics.recentFeedbacks.map((item) => (
+                  <div
+                    key={item.id}
+                    className="bg-white p-3 rounded-xl border border-slate-100 shadow-2xs space-y-1.5"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold text-slate-700">
+                        {item.authorName}
+                      </span>
+                      <div className="flex items-center gap-0.5">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star
+                            key={s}
+                            className={`w-3.5 h-3.5 ${
+                              s <= item.rating
+                                ? "fill-amber-400 text-amber-400"
+                                : "text-slate-200"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed break-words">
+                      {item.comment}
+                    </p>
+                    <div className="text-[10px] text-slate-400">
+                      {new Date(item.createdAt).toLocaleDateString("uk-UA", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Секція 3: Донат на Монобанку всередині модалки */}
           <div className="bg-gradient-to-r from-amber-50/80 via-sage-50/70 to-emerald-50/80 p-4 sm:p-5 rounded-2xl border border-amber-200/60 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="space-y-1 text-center sm:text-left">

@@ -119,6 +119,13 @@ export interface ProductMetricsDto {
   feedbackCount: number;
   donateClicks: number;
   conversionPercent: number;
+  recentFeedbacks?: Array<{
+    id: string;
+    rating: number;
+    comment: string;
+    authorName: string;
+    createdAt: string;
+  }>;
 }
 
 export interface FeedbackSubmissionDto {

@@ -284,12 +284,21 @@ export class ScheduleService {
   }
 
   async saveFeedback(data: CreateFeedbackDto, userId?: string | null) {
+    let validUserId: string | null = null;
+    if (userId) {
+      const existingUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true },
+      });
+      validUserId = existingUser ? existingUser.id : null;
+    }
+
     return prisma.productFeedback.create({
       data: {
         type: data.type,
         rating: data.rating ?? null,
-        comment: data.comment ? data.comment.trim() : null,
-        userId: userId || null,
+        comment: data.comment ?? null,
+        userId: validUserId,
       },
     });
   }

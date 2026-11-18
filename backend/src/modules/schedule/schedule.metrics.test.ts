@@ -117,6 +117,7 @@ describe('ProductFeedback Prisma Storage & Metrics Unit Tests', () => {
   });
 
   test('saves feedback record to prisma productFeedback table', async () => {
+    (prisma.user as any).findUnique = async ({ where }: any) => ({ id: where.id });
     let capturedData: any = null;
     (prisma.productFeedback as any).create = async (args: any) => {
       capturedData = args.data;

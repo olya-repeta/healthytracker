@@ -434,14 +434,14 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
                           />
                           ))}
                         </div>
-                        {user && (
+                        {user && item.userId === user.id && (
                           <button
                             type="button"
                             onClick={() => handleDeleteFeedback(item.id)}
                             disabled={deletingId === item.id}
                             className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition disabled:opacity-50"
-                            title="Видалити відгук"
-                            aria-label="Видалити відгук"
+                            title="Видалити свій відгук"
+                            aria-label="Видалити свій відгук"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>

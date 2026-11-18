@@ -744,8 +744,8 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           )}
 
           {/* 2. Інтерактивний календар прийому */}
-          <section className="bg-white rounded-3xl p-6 border border-sage-100 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
+          <section className="bg-white rounded-3xl p-4 sm:p-6 border border-sage-100 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 mb-5">
               <div>
                 <h2 className="text-lg font-bold text-slate-900">
                   Інтерактивний календар прийому
@@ -755,13 +755,13 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                 {/* Перемикач Місяць / Тиждень */}
-                <div className="inline-flex bg-sage-50 p-1 rounded-xl border border-sage-100 text-xs font-medium">
+                <div className="grid grid-cols-2 sm:inline-flex bg-sage-50 p-1 rounded-xl border border-sage-100 text-xs font-medium w-full sm:w-auto">
                   <button
                     type="button"
                     onClick={() => setCalendarView('month')}
-                    className={`px-3 py-1.5 rounded-lg transition ${
+                    className={`px-3 py-1.5 rounded-lg transition text-center ${
                       calendarView === 'month'
                         ? 'bg-white text-sage-800 shadow-sm'
                         : 'text-slate-600'
@@ -772,7 +772,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                   <button
                     type="button"
                     onClick={() => setCalendarView('week')}
-                    className={`px-3 py-1.5 rounded-lg transition ${
+                    className={`px-3 py-1.5 rounded-lg transition text-center ${
                       calendarView === 'week'
                         ? 'bg-white text-sage-800 shadow-sm'
                         : 'text-slate-600'
@@ -783,7 +783,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                 </div>
 
                 {/* Навігація по місяцях */}
-                <div className="flex items-center gap-1 bg-sage-50 px-2 py-1 rounded-xl border border-sage-100">
+                <div className="flex items-center justify-between sm:justify-start gap-1 bg-sage-50 px-2 py-1 rounded-xl border border-sage-100 w-full sm:w-auto">
                   <button
                     type="button"
                     onClick={() =>
@@ -795,12 +795,12 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                         )
                       )
                     }
-                    className="p-1 rounded-lg hover:bg-white text-slate-600 transition"
+                    className="p-1.5 sm:p-1 rounded-lg hover:bg-white text-slate-600 transition"
                     title="Попередній місяць"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
-                  <span className="text-xs sm:text-sm font-semibold text-slate-800 min-w-[125px] text-center">
+                  <span className="text-xs sm:text-sm font-semibold text-slate-800 min-w-[115px] sm:min-w-[125px] text-center">
                     {UKRAINIAN_MONTHS[currentMonthDate.getMonth()]}{' '}
                     {currentMonthDate.getFullYear()}
                   </span>
@@ -815,7 +815,7 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
                         )
                       )
                     }
-                    className="p-1 rounded-lg hover:bg-white text-slate-600 transition"
+                    className="p-1.5 sm:p-1 rounded-lg hover:bg-white text-slate-600 transition"
                     title="Наступний місяць"
                   >
                     <ChevronRight className="w-4 h-4" />

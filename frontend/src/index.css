@@ -3,8 +3,9 @@
 @tailwind utilities;
 
 @layer base {
+  html,
   body {
-    @apply bg-sage-50 text-slate-800 font-sans;
+    @apply bg-sage-50 text-slate-800 font-sans overflow-x-hidden max-w-full;
   }
 }
 
